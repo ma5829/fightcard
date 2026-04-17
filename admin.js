@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   const STORAGE_KEY = 'fightcard:participants';
+  const TOURNAMENT_KEY = 'fightcard:tournament';
 
   const form = document.getElementById('playerForm');
   const playerName = document.getElementById('playerName');
@@ -25,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function saveParticipants(list) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    localStorage.removeItem(TOURNAMENT_KEY);
   }
 
   function createId() {
@@ -79,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </article>
     `).join('');
+
     bindDeleteButtons();
   }
 

@@ -4,27 +4,28 @@
 
 ## 概要
 
-このリポジトリには、以下の表示状態を含む VS 画面の最小実装が入っています。
+このリポジトリには以下が含まれます。
 
-- 待機状態
-- シャッフル中
-- 確定演出
-
-主な特徴:
-
-- 左右の画像が高速に切り替わるシャッフル演出
-- `対戦決定` ボタンで減速しながら停止
-- 左右で同一人物が重複しないランダム選出ロジック
-- 画像素材がなくても確認できるよう、JavaScript で SVG ダミー画像を自動生成
-- GitHub Pages などの静的ホスティングに載せやすい構成
+- 表示画面 `index.html`
+- 参加者登録画面 `admin.html`
+- 高速シャッフル → 減速停止 → 確定演出
+- 左右で同一人物が重複しないランダム選出
+- 13人用トーナメント進行モード
+  - 1回戦: 5試合
+  - 2回戦: シード3人 + 1回戦勝者
+  - 3回戦: 準決勝2試合
+  - 4回戦: 決勝1試合
 
 ## ファイル構成
 
 ```text
 .
+├─ index.html
 ├─ display.html
-├─ style.css
+├─ admin.html
 ├─ script.js
+├─ admin.js
+├─ style.css
 ├─ README.md
 └─ .gitignore
 ```
@@ -33,62 +34,40 @@
 
 ### 1. ローカルで確認する
 
-`display.html` をブラウザで開くだけで動作します。
+`index.html` をブラウザで開くだけで動作します。
 
-```bash
-open display.html
-```
+### 2. 参加者を登録する
 
-または VS Code の Live Server などでも確認できます。
+`admin.html` を開き、名前と顔写真を登録してください。
 
-### 2. 操作方法
+- 登録データは `localStorage` に保存されます
+- 同じブラウザ・同じ端末・同じURLで表示画面と共有されます
+- 参加者を変更すると、保存済みトーナメント表は自動でリセットされます
+
+### 3. 表示画面の操作
 
 - `シャッフル開始`: 左右の画像が高速切替
 - `対戦決定`: 減速しながら停止してカード確定
-- `次のカードへ`: 待機状態へ戻す
+- `次の試合へ`: 次カードの待機状態へ戻す
+- `トーナメント`: 13人登録時にトーナメント表を開始 / 確認
 
 キーボード操作:
 
 - `Space`: シャッフル開始
 - `Enter`: 対戦決定
+- `T`: トーナメント表を開く
 
-## 実画像に差し替える方法
+## トーナメント仕様
 
-現在は `script.js` 内でダミー SVG 画像を生成しています。
-実際の参加者写真を使う場合は、`baseParticipants` を次のように差し替えてください。
+13人ちょうど登録されている状態で、表示画面からトーナメントを開始できます。
 
-```js
-const participants = [
-  { id: "p1", name: "TAKA", image: "./assets/img/participants/taka.jpg" },
-  { id: "p2", name: "YUJI", image: "./assets/img/participants/yuji.jpg" },
-  { id: "p3", name: "AKIRA", image: "./assets/img/participants/akira.jpg" }
-];
-```
+- 1回戦は 10人で 5試合
+- 残り 3人はシードとして 2回戦から登場
+- 2回戦は 4試合
+- 3回戦は 2試合
+- 最後に決勝 1試合
 
-その場合は `createFighterSvgDataUrl()` を使わない構成に変更できます。
-
-## 今後の拡張候補
-
-- 管理画面の追加
-- 参加者の画像アップロード
-- 抽選対象 ON / OFF
-- 既出カードの除外
-- 対戦履歴の保存
-- 効果音 / BGM
-- GitHub Pages 用のトップページ最適化
-
-## GitHub に初回 push する例
-
-空の GitHub リポジトリを作成した後、ローカルで以下を実行します。
-
-```bash
-git init
-git add .
-git commit -m "Initial commit: fight card display mock"
-git branch -M main
-git remote add origin https://github.com/YOUR_NAME/YOUR_REPOSITORY.git
-git push -u origin main
-```
+対戦カード確定後、表示画面下部の `左を勝者にする / 右を勝者にする` ボタンで進行できます。
 
 ## GitHub Pages で公開する例
 
@@ -97,7 +76,25 @@ git push -u origin main
 3. `Deploy from a branch` を選択
 4. `main` ブランチ / `/ (root)` を指定
 
-これで静的ページとして公開できます。
+公開後のトップURLは通常以下です。
+
+```text
+https://<GitHubユーザー名>.github.io/<リポジトリ名>/
+```
+
+管理画面は以下です。
+
+```text
+https://<GitHubユーザー名>.github.io/<リポジトリ名>/admin.html
+```
+
+## 今後の拡張候補
+
+- 勝者履歴の保存
+- 組み合わせ重複の完全除外
+- 参加者編集
+- 効果音 / BGM
+- Firebase / Supabase 連携で複数端末共有
 
 ## ライセンス
 

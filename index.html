@@ -9,7 +9,6 @@
 <body>
   <main class="display-shell">
     <section class="battle-screen is-idle" id="battleScreen">
-
       <div class="battle-screen__bg">
         <div class="bg-gradient"></div>
         <div class="bg-grid"></div>
@@ -18,12 +17,17 @@
         <div class="bg-speedlines"></div>
       </div>
 
-      <div class="impact-flash" id="impactFlash" aria-hidden="true"></div>
-      <div class="impact-burst impact-burst--left" id="impactBurstLeft" aria-hidden="true"></div>
-      <div class="impact-burst impact-burst--right" id="impactBurstRight" aria-hidden="true"></div>
-
-      <div class="match-banner" id="matchBanner" hidden>
-        <span class="match-banner__text">MATCH CONFIRMED</span>
+      <div class="fx-layer" id="fxLayer" aria-hidden="true">
+        <div class="fx-flash" id="fxFlash"></div>
+        <div class="fx-flash2" id="fxFlash2"></div>
+        <div class="fx-shockwave" id="fxShockwave"></div>
+        <div class="fx-shockwave2" id="fxShockwave2"></div>
+        <div class="fx-burst fx-burst--left" id="fxBurstLeft"></div>
+        <div class="fx-burst fx-burst--right" id="fxBurstRight"></div>
+        <canvas class="fx-particles" id="fxParticles"></canvas>
+        <div class="fx-lightning fx-lightning--left" id="fxLightLeft"></div>
+        <div class="fx-lightning fx-lightning--right" id="fxLightRight"></div>
+        <div class="fx-vignette" id="fxVignette"></div>
       </div>
 
       <header class="battle-hud">
@@ -31,24 +35,21 @@
           <span class="battle-brand__main">MATCH UP</span>
           <span class="battle-brand__sub">FIGHT CARD SYSTEM</span>
         </div>
-
         <div class="battle-meta">
           <span class="battle-meta__pill" id="roundLabel">ROUND 01</span>
-          <span class="battle-meta__pill" id="modeLabel">RANDOM MATCH</span>
+          <span class="battle-meta__pill" id="matchLabel">RANDOM MATCH</span>
         </div>
       </header>
 
       <div class="battle-stage">
-
         <section class="fighter-panel fighter-panel--left">
           <div class="fighter-frame" id="leftFrame">
             <div class="fighter-art fighter-art--left" id="leftArt">
               <img id="leftImage" class="fighter-art__img" src="" alt="LEFT PLAYER" />
-              <span class="fighter-art__badge">PLAYER 1</span>
+              <span class="fighter-art__badge" id="leftBadge">PLAYER 1</span>
               <span class="fighter-art__title" id="leftArtTitle">STANDBY</span>
             </div>
           </div>
-
           <div class="nameplate nameplate--left">
             <span class="nameplate__label">LEFT</span>
             <strong class="nameplate__name" id="leftName">STANDBY</strong>
@@ -57,6 +58,7 @@
 
         <section class="vs-core" id="vsCore">
           <div class="vs-core__ring"></div>
+          <div class="vs-core__ring2"></div>
           <div class="vs-core__glow"></div>
           <div class="vs-core__pulse"></div>
           <div class="vs-core__slash"></div>
@@ -68,11 +70,10 @@
           <div class="fighter-frame" id="rightFrame">
             <div class="fighter-art fighter-art--right" id="rightArt">
               <img id="rightImage" class="fighter-art__img" src="" alt="RIGHT PLAYER" />
-              <span class="fighter-art__badge">PLAYER 2</span>
+              <span class="fighter-art__badge" id="rightBadge">PLAYER 2</span>
               <span class="fighter-art__title" id="rightArtTitle">STANDBY</span>
             </div>
           </div>
-
           <div class="nameplate nameplate--right">
             <span class="nameplate__label">RIGHT</span>
             <strong class="nameplate__name" id="rightName">STANDBY</strong>
@@ -87,25 +88,56 @@
       </div>
 
       <footer class="battle-footer">
-        <div class="battle-status">
-          <span class="battle-status__label">STATUS</span>
-          <strong class="battle-status__value" id="battleStatusValue">READY FOR NEXT BATTLE</strong>
+        <div class="battle-status-row">
+          <div class="battle-status">
+            <span class="battle-status__label">STATUS</span>
+            <strong class="battle-status__value" id="battleStatusValue">READY FOR NEXT BATTLE</strong>
+          </div>
+          <div class="battle-controls">
+            <button class="ui-btn ui-btn--primary" id="btnShuffleStart">シャッフル開始</button>
+            <button class="ui-btn ui-btn--danger" id="btnConfirm">対戦決定</button>
+            <button class="ui-btn" id="btnReset">次の試合へ</button>
+            <button class="ui-btn" id="btnTournament">トーナメント</button>
+            <a class="ui-btn" href="./admin.html">管理画面</a>
+          </div>
         </div>
 
-        <div class="battle-controls">
-          <button class="ui-btn ui-btn--primary" id="btnShuffleStart">シャッフル開始</button>
-          <button class="ui-btn ui-btn--danger" id="btnConfirm">対戦決定</button>
-          <button class="ui-btn" id="btnReset">次のカードへ</button>
+        <div class="battle-action-row">
+          <div class="tournament-info" id="tournamentInfo">RANDOM MODE</div>
+          <div class="tournament-actions" id="tournamentActions" hidden>
+            <button class="ui-btn ui-btn--winner-left" id="btnWinnerLeft">左を勝者にする</button>
+            <button class="ui-btn ui-btn--winner-right" id="btnWinnerRight">右を勝者にする</button>
+          </div>
         </div>
       </footer>
-
     </section>
 
+    <div class="match-banner" id="matchBanner" hidden aria-live="assertive">
+      <div class="match-banner__inner">
+        <span class="match-banner__eyebrow">FIGHT CARD LOCKED IN</span>
+        <span class="match-banner__text">MATCH CONFIRMED</span>
+      </div>
+    </div>
+
     <p class="help-text">
-      操作: 「シャッフル開始」→「対戦決定」 / キーボードは
-      <kbd>Space</kbd> で開始、<kbd>Enter</kbd> で決定
+      <kbd>Space</kbd> シャッフル開始 &nbsp;/&nbsp;
+      <kbd>Enter</kbd> 対戦決定 &nbsp;/&nbsp;
+      <kbd>T</kbd> トーナメント表
     </p>
   </main>
+
+  <dialog class="tournament-dialog" id="tournamentDialog">
+    <div class="td-inner">
+      <div class="td-head">
+        <h2 class="td-title">TOURNAMENT BRACKET</h2>
+        <button class="ui-btn" id="btnTournamentClose">✕ 閉じる</button>
+      </div>
+      <div class="td-body" id="tournamentBody"></div>
+      <div class="td-foot">
+        <button class="ui-btn" id="btnTournamentReset">トーナメントをリセット</button>
+      </div>
+    </div>
+  </dialog>
 
   <script src="./script.js"></script>
 </body>
