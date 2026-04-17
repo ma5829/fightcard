@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fight Card Display</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="display-shell">
+    <section class="battle-screen is-idle" id="battleScreen">
+
+      <div class="battle-screen__bg">
+        <div class="bg-gradient"></div>
+        <div class="bg-grid"></div>
+        <div class="bg-scanlines"></div>
+        <div class="bg-graffiti"></div>
+        <div class="bg-speedlines"></div>
+      </div>
+
+      <div class="impact-flash" id="impactFlash" aria-hidden="true"></div>
+      <div class="impact-burst impact-burst--left" id="impactBurstLeft" aria-hidden="true"></div>
+      <div class="impact-burst impact-burst--right" id="impactBurstRight" aria-hidden="true"></div>
+
+      <div class="match-banner" id="matchBanner" hidden>
+        <span class="match-banner__text">MATCH CONFIRMED</span>
+      </div>
+
+      <header class="battle-hud">
+        <div class="battle-brand">
+          <span class="battle-brand__main">MATCH UP</span>
+          <span class="battle-brand__sub">FIGHT CARD SYSTEM</span>
+        </div>
+
+        <div class="battle-meta">
+          <span class="battle-meta__pill" id="roundLabel">ROUND 01</span>
+          <span class="battle-meta__pill" id="modeLabel">RANDOM MATCH</span>
+        </div>
+      </header>
+
+      <div class="battle-stage">
+
+        <section class="fighter-panel fighter-panel--left">
+          <div class="fighter-frame" id="leftFrame">
+            <div class="fighter-art fighter-art--left" id="leftArt">
+              <img id="leftImage" class="fighter-art__img" src="" alt="LEFT PLAYER" />
+              <span class="fighter-art__badge">PLAYER 1</span>
+              <span class="fighter-art__title" id="leftArtTitle">STANDBY</span>
+            </div>
+          </div>
+
+          <div class="nameplate nameplate--left">
+            <span class="nameplate__label">LEFT</span>
+            <strong class="nameplate__name" id="leftName">STANDBY</strong>
+          </div>
+        </section>
+
+        <section class="vs-core" id="vsCore">
+          <div class="vs-core__ring"></div>
+          <div class="vs-core__glow"></div>
+          <div class="vs-core__pulse"></div>
+          <div class="vs-core__slash"></div>
+          <div class="vs-core__text">VS</div>
+          <div class="vs-core__sub" id="vsSubText">READY FOR NEXT BATTLE</div>
+        </section>
+
+        <section class="fighter-panel fighter-panel--right">
+          <div class="fighter-frame" id="rightFrame">
+            <div class="fighter-art fighter-art--right" id="rightArt">
+              <img id="rightImage" class="fighter-art__img" src="" alt="RIGHT PLAYER" />
+              <span class="fighter-art__badge">PLAYER 2</span>
+              <span class="fighter-art__title" id="rightArtTitle">STANDBY</span>
+            </div>
+          </div>
+
+          <div class="nameplate nameplate--right">
+            <span class="nameplate__label">RIGHT</span>
+            <strong class="nameplate__name" id="rightName">STANDBY</strong>
+          </div>
+        </section>
+      </div>
+
+      <div class="shuffle-overlay" aria-hidden="true">
+        <span class="shuffle-overlay__text">RANDOM</span>
+        <span class="shuffle-overlay__text">BATTLE</span>
+        <span class="shuffle-overlay__text">MATCH</span>
+      </div>
+
+      <footer class="battle-footer">
+        <div class="battle-status">
+          <span class="battle-status__label">STATUS</span>
+          <strong class="battle-status__value" id="battleStatusValue">READY FOR NEXT BATTLE</strong>
+        </div>
+
+        <div class="battle-controls">
+          <button class="ui-btn ui-btn--primary" id="btnShuffleStart">シャッフル開始</button>
+          <button class="ui-btn ui-btn--danger" id="btnConfirm">対戦決定</button>
+          <button class="ui-btn" id="btnReset">次のカードへ</button>
+        </div>
+      </footer>
+
+    </section>
+
+    <p class="help-text">
+      操作: 「シャッフル開始」→「対戦決定」 / キーボードは
+      <kbd>Space</kbd> で開始、<kbd>Enter</kbd> で決定
+    </p>
+  </main>
+
+  <script src="./script.js"></script>
+</body>
+</html>
