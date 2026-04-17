@@ -1,17 +1,14 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const baseParticipants = [
-    { id: "p1", name: "TAKA",  colorA: "#23d8ff", colorB: "#0f3f62" },
-    { id: "p2", name: "YUJI",  colorA: "#ff4f7d", colorB: "#5f1735" },
-    { id: "p3", name: "AKIRA", colorA: "#ffd24a", colorB: "#704d00" },
-    { id: "p4", name: "REI",   colorA: "#8d7bff", colorB: "#2d2267" },
-    { id: "p5", name: "SHUN",  colorA: "#45f0b2", colorB: "#0f4f3d" },
-    { id: "p6", name: "MAKO",  colorA: "#ff9855", colorB: "#6a2b0d" }
-  ];
+  const STORAGE_KEY = "fightcard:participants";
 
-  const participants = baseParticipants.map((p) => ({
-    ...p,
-    image: createFighterSvgDataUrl(p.name, p.colorA, p.colorB)
-  }));
+  const baseParticipants = [
+    { id: "p1", name: "TAKA", colorA: "#23d8ff", colorB: "#0f3f62" },
+    { id: "p2", name: "YUJI", colorA: "#ff4f7d", colorB: "#5f1735" },
+    { id: "p3", name: "AKIRA", colorA: "#ffd24a", colorB: "#704d00" },
+    { id: "p4", name: "REI", colorA: "#8d7bff", colorB: "#2d2267" },
+    { id: "p5", name: "SHUN", colorA: "#45f0b2", colorB: "#0f4f3d" },
+    { id: "p6", name: "MAKO", colorA: "#ff9855", colorB: "#6a2b0d" }
+  ];
 
   const battleScreen = document.getElementById("battleScreen");
   const leftImage = document.getElementById("leftImage");
@@ -33,15 +30,78 @@ document.addEventListener("DOMContentLoaded", () => {
     rightCurrent: null,
     leftTimer: null,
     rightTimer: null,
-    isBusy: false
+    isBusy: false,
+    participants: []
   };
 
   function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function createFighterSvgDataUrl(name, colorA, colorB) {
+    const safeName = escapeHtml(name);
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+        <defs>
+          <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stop-color="${colorA}" />
+            <stop offset="100%" stop-color="${colorB}" />
+          </linearGradient>
+        </defs>
+        <rect width="900" height="600" fill="url(#bg)" />
+        <rect width="900" height="600" fill="rgba(0,0,0,0.18)" />
+        <g opacity="0.22">
+          <path d="M0,120 L900,20 L900,90 L0,190 Z" fill="white"/>
+          <path d="M0,340 L900,240 L900,300 L0,400 Z" fill="white"/>
+          <path d="M0,520 L900,430 L900,490 L0,580 Z" fill="white"/>
+        </g>
+        <circle cx="670" cy="160" r="180" fill="rgba(255,255,255,0.16)" />
+        <circle cx="700" cy="180" r="120" fill="rgba(255,255,255,0.10)" />
+        <g opacity="0.9">
+          <ellipse cx="460" cy="250" rx="130" ry="120" fill="rgba(255,255,255,0.88)" />
+          <path d="M300 520 C320 400, 390 330, 460 330 C530 330, 600 400, 620 520 Z" fill="rgba(255,255,255,0.88)" />
+        </g>
+        <text x="40" y="545" font-size="108" font-family="Impact, Arial Black, sans-serif" fill="rgba(255,255,255,0.24)" letter-spacing="4">${safeName}</text>
+      </svg>
+    `;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  }
+
+  function getFallbackParticipants() {
+    return baseParticipants.map((p) => ({
+      id: p.id,
+      name: p.name,
+      image: createFighterSvgDataUrl(p.name, p.colorA, p.colorB)
+    }));
+  }
+
+  function loadStoredParticipants() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((item) => item && item.id && item.name && item.image);
+    } catch {
+      return [];
+    }
+  }
+
   function getActiveParticipants() {
-    return participants;
+    return state.participants;
+  }
+
+  function refreshParticipants() {
+    const stored = loadStoredParticipants();
+    state.participants = stored.length >= 2 ? stored : getFallbackParticipants();
   }
 
   function randomItem(list) {
@@ -67,51 +127,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     return { left, right };
-  }
-
-  function createFighterSvgDataUrl(name, colorA, colorB) {
-    const safeName = escapeHtml(name);
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
-        <defs>
-          <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stop-color="${colorA}" />
-            <stop offset="100%" stop-color="${colorB}" />
-          </linearGradient>
-        </defs>
-
-        <rect width="900" height="600" fill="url(#bg)" />
-        <rect width="900" height="600" fill="rgba(0,0,0,0.18)" />
-
-        <g opacity="0.22">
-          <path d="M0,120 L900,20 L900,90 L0,190 Z" fill="white"/>
-          <path d="M0,340 L900,240 L900,300 L0,400 Z" fill="white"/>
-          <path d="M0,520 L900,430 L900,490 L0,580 Z" fill="white"/>
-        </g>
-
-        <circle cx="670" cy="160" r="180" fill="rgba(255,255,255,0.16)" />
-        <circle cx="700" cy="180" r="120" fill="rgba(255,255,255,0.10)" />
-
-        <g opacity="0.9">
-          <ellipse cx="460" cy="250" rx="130" ry="120" fill="rgba(255,255,255,0.88)" />
-          <path d="M300 520 C320 400, 390 330, 460 330 C530 330, 600 400, 620 520 Z" fill="rgba(255,255,255,0.88)" />
-        </g>
-
-        <text x="40" y="545" font-size="108" font-family="Impact, Arial Black, sans-serif" fill="rgba(255,255,255,0.24)" letter-spacing="4">
-          ${safeName}
-        </text>
-      </svg>
-    `;
-    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-  }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
   }
 
   function renderSide(side, fighter) {
@@ -207,6 +222,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function startShuffle() {
+    refreshParticipants();
     const list = getActiveParticipants();
     if (state.isBusy) return;
     if (list.length < 2) {
@@ -251,6 +267,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function confirmShuffle() {
+    refreshParticipants();
     const list = getActiveParticipants();
     if (state.isBusy) return;
     if (list.length < 2) {
@@ -283,11 +300,20 @@ document.addEventListener("DOMContentLoaded", () => {
   function resetBattle() {
     if (state.phase === "locking" || state.isBusy) return;
     clearTimers();
+    refreshParticipants();
+
+    const list = getActiveParticipants();
+    if (list.length >= 2) {
+      const pair = pickDistinctPair(list);
+      renderPair(pair.left, pair.right);
+    }
+
     setPhase("idle");
     matchBanner.hidden = true;
   }
 
   function init() {
+    refreshParticipants();
     const list = getActiveParticipants();
 
     if (list.length >= 2) {
@@ -300,6 +326,15 @@ document.addEventListener("DOMContentLoaded", () => {
     btnShuffleStart.addEventListener("click", startShuffle);
     btnConfirm.addEventListener("click", confirmShuffle);
     btnReset.addEventListener("click", resetBattle);
+
+    window.addEventListener("storage", (event) => {
+      if (event.key === STORAGE_KEY) {
+        refreshParticipants();
+        if (state.phase === "idle") {
+          resetBattle();
+        }
+      }
+    });
 
     window.addEventListener("keydown", (event) => {
       if (event.repeat) return;

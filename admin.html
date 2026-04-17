@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fight Card Admin</title>
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .admin-shell{max-width:1200px;margin:0 auto;display:grid;gap:20px}
+    .admin-header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+    .admin-title{margin:0;font-family:var(--font-title);font-size:clamp(28px,4vw,48px);letter-spacing:.04em;text-transform:uppercase}
+    .admin-sub{margin:6px 0 0;color:#c7d0dc;line-height:1.7;font-size:14px;max-width:760px}
+    .admin-grid{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:20px}
+    .admin-card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+    .admin-card__head{padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .admin-card__title{margin:0;font-family:var(--font-title);font-size:24px;letter-spacing:.04em;text-transform:uppercase}
+    .admin-card__body{padding:20px}
+    .form-grid{display:grid;gap:14px}
+    .form-label{display:grid;gap:8px;font-weight:700;color:#dbe4ef;font-size:14px}
+    .text-input,.file-input{width:100%;min-height:48px;padding:0 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(6,8,13,.8);color:var(--text);font:inherit}
+    .file-input{padding:10px 14px}
+    .preview-box{position:relative;aspect-ratio:4/3;border:1px dashed rgba(255,255,255,.2);border-radius:18px;overflow:hidden;background:linear-gradient(135deg,rgba(45,215,255,.14),rgba(255,61,104,.1))}
+    .preview-box img{width:100%;height:100%;object-fit:cover;display:block}
+    .preview-box__empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#dbe4ef;padding:16px;font-weight:700;letter-spacing:.06em}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+    .admin-note{margin:0;color:#98a2b3;font-size:13px;line-height:1.7}
+    .player-list{display:grid;gap:12px}
+    .player-item{display:grid;grid-template-columns:92px 1fr auto;gap:14px;align-items:center;padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:rgba(6,8,13,.58)}
+    .player-item__thumb{width:92px;height:72px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:#10141d}
+    .player-item__thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .player-item__meta{display:grid;gap:6px;min-width:0}
+    .player-item__name{font-family:var(--font-title);font-size:28px;line-height:.95;letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .player-item__id{color:#98a2b3;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+    .empty-state{padding:24px;border:1px dashed rgba(255,255,255,.14);border-radius:18px;color:#c7d0dc;text-align:center;line-height:1.8}
+    .link-row{display:flex;gap:10px;flex-wrap:wrap}
+    .pill{display:inline-flex;align-items:center;min-height:38px;padding:0 14px;border:1px solid rgba(255,255,255,.1);clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);background:rgba(255,255,255,.05);font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+    @media (max-width:960px){.admin-grid{grid-template-columns:1fr}.player-item{grid-template-columns:80px 1fr}.player-item__actions{grid-column:1/-1;display:flex;justify-content:flex-end}}
+  </style>
+</head>
+<body>
+  <main class="admin-shell">
+    <header class="admin-header">
+      <div>
+        <p class="pill">Fight Card Admin</p>
+        <h1 class="admin-title">参加者登録画面</h1>
+        <p class="admin-sub">名前と顔写真を登録すると、表示画面側のランダム抽選でそのまま使えます。データは同じブラウザの <code>localStorage</code> に保存されます。</p>
+      </div>
+      <div class="link-row">
+        <a class="ui-btn" href="./index.html">表示画面へ</a>
+      </div>
+    </header>
+
+    <section class="admin-grid">
+      <article class="admin-card">
+        <div class="admin-card__head">
+          <h2 class="admin-card__title">新規登録</h2>
+          <span class="pill">Local Storage</span>
+        </div>
+        <div class="admin-card__body">
+          <form id="playerForm" class="form-grid">
+            <label class="form-label">
+              表示名
+              <input id="playerName" class="text-input" type="text" maxlength="24" placeholder="例: TAKA" required />
+            </label>
+            <label class="form-label">
+              顔写真
+              <input id="playerImage" class="file-input" type="file" accept="image/*" required />
+            </label>
+
+            <div class="preview-box" id="previewBox">
+              <div class="preview-box__empty" id="previewEmpty">顔写真プレビュー</div>
+              <img id="previewImage" alt="preview" hidden />
+            </div>
+
+            <div class="toolbar">
+              <button class="ui-btn ui-btn--primary" type="submit">登録する</button>
+              <button class="ui-btn" type="button" id="btnResetForm">入力をクリア</button>
+            </div>
+            <p class="admin-note">※ GitHub Pages の静的サイトでも動作しますが、登録データはこのブラウザ・この端末にのみ保存されます。</p>
+          </form>
+        </div>
+      </article>
+
+      <article class="admin-card">
+        <div class="admin-card__head">
+          <h2 class="admin-card__title">登録済み参加者</h2>
+          <div class="toolbar">
+            <button class="ui-btn" id="btnSeedDummy" type="button">サンプル追加</button>
+            <button class="ui-btn" id="btnClearAll" type="button">全削除</button>
+          </div>
+        </div>
+        <div class="admin-card__body">
+          <div id="playerList" class="player-list"></div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script src="./admin.js"></script>
+</body>
+</html>
