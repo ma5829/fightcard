@@ -24,6 +24,7 @@
         <div class="fx-shockwave2" id="fxShockwave2"></div>
         <div class="fx-burst fx-burst--left" id="fxBurstLeft"></div>
         <div class="fx-burst fx-burst--right" id="fxBurstRight"></div>
+        <div class="fx-cross" id="fxCross"></div>
         <canvas class="fx-particles" id="fxParticles"></canvas>
         <div class="fx-lightning fx-lightning--left" id="fxLightLeft"></div>
         <div class="fx-lightning fx-lightning--right" id="fxLightRight"></div>
@@ -98,7 +99,6 @@
             <button class="ui-btn ui-btn--danger" id="btnConfirm">対戦決定</button>
             <button class="ui-btn" id="btnReset">次の試合へ</button>
             <button class="ui-btn" id="btnTournament">トーナメント</button>
-            <a class="ui-btn" href="./admin.html">管理画面</a>
           </div>
         </div>
 
@@ -126,18 +126,21 @@
     </p>
   </main>
 
-  <dialog class="tournament-dialog" id="tournamentDialog">
-    <div class="td-inner">
-      <div class="td-head">
-        <h2 class="td-title">TOURNAMENT BRACKET</h2>
-        <button class="ui-btn" id="btnTournamentClose">✕ 閉じる</button>
+  <div class="tournament-modal" id="tournamentModal" hidden>
+    <div class="tournament-modal__backdrop" id="tournamentBackdrop"></div>
+    <section class="tournament-panel" role="dialog" aria-modal="true" aria-labelledby="tournamentTitle">
+      <div class="td-inner">
+        <div class="td-head">
+          <h2 class="td-title" id="tournamentTitle">TOURNAMENT BRACKET</h2>
+          <button class="ui-btn" id="btnTournamentClose">✕ 閉じる</button>
+        </div>
+        <div class="td-body" id="tournamentBody"></div>
+        <div class="td-foot">
+          <button class="ui-btn" id="btnTournamentReset">トーナメントをリセット</button>
+        </div>
       </div>
-      <div class="td-body" id="tournamentBody"></div>
-      <div class="td-foot">
-        <button class="ui-btn" id="btnTournamentReset">トーナメントをリセット</button>
-      </div>
-    </div>
-  </dialog>
+    </section>
+  </div>
 
   <script src="./script.js"></script>
 </body>

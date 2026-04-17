@@ -36,7 +36,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnWinnerLeft = document.getElementById("btnWinnerLeft");
   const btnWinnerRight = document.getElementById("btnWinnerRight");
 
-  const tournamentDialog = document.getElementById("tournamentDialog");
+  const tournamentModal = document.getElementById("tournamentModal");
+  const tournamentBackdrop = document.getElementById("tournamentBackdrop");
   const tournamentBody = document.getElementById("tournamentBody");
   const btnTournamentClose = document.getElementById("btnTournamentClose");
   const btnTournamentReset = document.getElementById("btnTournamentReset");
@@ -55,7 +56,8 @@ document.addEventListener("DOMContentLoaded", () => {
     tournament: null,
     scheduledMatch: null,
     particlesFrame: null,
-    bannerTimer: null
+    bannerTimer: null,
+    modalTimer: null
   };
 
   function wait(ms) {
@@ -354,6 +356,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function isTournamentOpen() {
+    return !tournamentModal.hidden;
+  }
+
   function renderScheduledOrFallbackPair() {
     refreshParticipants();
     refreshTournament();
@@ -508,17 +514,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
     const colors = ["#ffe45b", "#ffffff", "#2dd7ff", "#ff3d68", "#ff8a5b"];
-    const particles = Array.from({ length: 150 }, () => {
+    const particles = Array.from({ length: 180 }, () => {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 4 + Math.random() * 18;
+      const speed = 5 + Math.random() * 20;
       return {
         x: centerX,
         y: centerY,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        life: 0.75 + Math.random() * 0.45,
-        size: 1.8 + Math.random() * 4.2,
-        length: 12 + Math.random() * 24,
+        life: 0.7 + Math.random() * 0.5,
+        size: 1.8 + Math.random() * 4.8,
         color: colors[Math.floor(Math.random() * colors.length)]
       };
     });
@@ -533,18 +538,18 @@ document.addEventListener("DOMContentLoaded", () => {
       particles.forEach((particle) => {
         particle.x += particle.vx * dt;
         particle.y += particle.vy * dt;
-        particle.vx *= 0.986;
-        particle.vy *= 0.986;
+        particle.vx *= 0.985;
+        particle.vy *= 0.985;
         particle.life -= 0.02 * dt;
 
         if (particle.life <= 0) return;
 
         ctx.globalAlpha = Math.max(0, particle.life);
         ctx.strokeStyle = particle.color;
-        ctx.lineWidth = Math.max(1, particle.size * 0.55);
+        ctx.lineWidth = Math.max(1, particle.size * 0.52);
         ctx.beginPath();
         ctx.moveTo(particle.x, particle.y);
-        ctx.lineTo(particle.x - particle.vx * 0.85, particle.y - particle.vy * 0.85);
+        ctx.lineTo(particle.x - particle.vx * 1.15, particle.y - particle.vy * 1.15);
         ctx.stroke();
 
         ctx.fillStyle = particle.color;
@@ -614,8 +619,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     setPhase("shuffling");
-    state.leftTimer = setInterval(tickLeft, 70);
-    state.rightTimer = setInterval(tickRight, 96);
+    state.leftTimer = setInterval(tickLeft, 68);
+    state.rightTimer = setInterval(tickRight, 92);
   }
 
   async function stopWithSlowdown(side, finalFighter, finalBadge, delays) {
@@ -659,8 +664,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     await Promise.all([
-      stopWithSlowdown("left", finalPair.left, finalPair.leftBadge, [80, 110, 150, 210, 290]),
-      stopWithSlowdown("right", finalPair.right, finalPair.rightBadge, [95, 130, 170, 240, 320])
+      stopWithSlowdown("left", finalPair.left, finalPair.leftBadge, [70, 100, 140, 190, 260, 340]),
+      stopWithSlowdown("right", finalPair.right, finalPair.rightBadge, [85, 120, 160, 220, 290, 380])
     ]);
 
     setPhase("confirmed");
@@ -768,15 +773,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function openTournamentDialog() {
     renderTournamentBracket();
-    if (typeof tournamentDialog.showModal === "function") {
-      tournamentDialog.showModal();
-    }
+    clearTimeout(state.modalTimer);
+    tournamentModal.hidden = false;
+    requestAnimationFrame(() => {
+      tournamentModal.classList.add("is-open");
+    });
   }
 
   function closeTournamentDialog() {
-    if (tournamentDialog.open) {
-      tournamentDialog.close();
-    }
+    clearTimeout(state.modalTimer);
+    tournamentModal.classList.remove("is-open");
+    state.modalTimer = setTimeout(() => {
+      tournamentModal.hidden = true;
+    }, 220);
   }
 
   function selectWinner(side) {
@@ -809,7 +818,7 @@ document.addEventListener("DOMContentLoaded", () => {
       refreshTournament();
       renderScheduledOrFallbackPair();
       setPhase("idle");
-      if (tournamentDialog.open) {
+      if (isTournamentOpen()) {
         renderTournamentBracket();
       }
     }, 900);
@@ -818,12 +827,11 @@ document.addEventListener("DOMContentLoaded", () => {
   function resetBattle() {
     if (state.phase === "locking" || state.isBusy) return;
     clearTimers();
+    renderScheduledOrFallbackPair();
     if (state.tournament?.status === "complete") {
-      renderScheduledOrFallbackPair();
       updateUiByPhase();
       return;
     }
-    renderScheduledOrFallbackPair();
     setPhase("idle");
   }
 
@@ -843,6 +851,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btnTournamentReset.addEventListener("click", resetTournament);
     btnWinnerLeft.addEventListener("click", () => selectWinner("left"));
     btnWinnerRight.addEventListener("click", () => selectWinner("right"));
+    tournamentBackdrop.addEventListener("click", closeTournamentDialog);
 
     window.addEventListener("resize", resizeParticlesCanvas);
     window.addEventListener("storage", (event) => {
@@ -851,7 +860,7 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshTournament();
         renderScheduledOrFallbackPair();
         updateUiByPhase();
-        if (tournamentDialog.open) {
+        if (isTournamentOpen()) {
           renderTournamentBracket();
         }
       }
@@ -859,6 +868,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.addEventListener("keydown", (event) => {
       if (event.repeat) return;
+
+      if (event.key === "Escape" && isTournamentOpen()) {
+        event.preventDefault();
+        closeTournamentDialog();
+        return;
+      }
 
       if (event.code === "Space") {
         event.preventDefault();
