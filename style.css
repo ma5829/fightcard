@@ -994,25 +994,195 @@ kbd {
   animation: championSpotlight 1.4s ease-out both;
 }
 
+.winner-spotlight {
+  position: fixed;
+  inset: 0;
+  z-index: 134;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.winner-spotlight[hidden] {
+  display: none;
+}
+
+.winner-spotlight__bg,
+.winner-spotlight__ray,
+.winner-spotlight__particles {
+  position: absolute;
+  inset: 0;
+}
+
+.winner-spotlight__bg {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255,228,91,.22), transparent 22%),
+    radial-gradient(circle at 50% 65%, rgba(255,255,255,.08), transparent 26%),
+    linear-gradient(180deg, rgba(5,6,10,.24), rgba(2,3,6,.72));
+  backdrop-filter: blur(7px);
+}
+
+.winner-spotlight__ray {
+  opacity: 0;
+  mix-blend-mode: screen;
+}
+
+.winner-spotlight__ray--left {
+  background: linear-gradient(180deg, rgba(45,215,255,.38), transparent 72%);
+  clip-path: polygon(20% 0, 34% 0, 56% 100%, 4% 100%);
+}
+
+.winner-spotlight__ray--right {
+  background: linear-gradient(180deg, rgba(255,61,104,.38), transparent 72%);
+  clip-path: polygon(66% 0, 80% 0, 96% 100%, 44% 100%);
+}
+
+.winner-spotlight__particles {
+  opacity: 0;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255,228,91,.95) 0 3px, transparent 4px),
+    radial-gradient(circle at 24% 34%, rgba(255,255,255,.95) 0 2px, transparent 3px),
+    radial-gradient(circle at 76% 20%, rgba(255,61,104,.95) 0 3px, transparent 4px),
+    radial-gradient(circle at 88% 28%, rgba(45,215,255,.95) 0 2px, transparent 3px),
+    radial-gradient(circle at 16% 72%, rgba(255,255,255,.92) 0 2px, transparent 3px),
+    radial-gradient(circle at 74% 74%, rgba(255,228,91,.92) 0 3px, transparent 4px);
+  animation: confettiFloat 7s linear infinite;
+}
+
+.winner-spotlight__card {
+  position: relative;
+  z-index: 2;
+  width: min(500px, calc(100vw - 28px));
+  padding: 28px 24px 24px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 28px;
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.03)),
+    linear-gradient(145deg, rgba(255,228,91,.16), rgba(255,61,104,.08) 42%, rgba(45,215,255,.08));
+  box-shadow: 0 24px 90px rgba(0,0,0,.55), 0 0 0 1px rgba(255,228,91,.08), 0 0 50px rgba(255,228,91,.16);
+  transform: translateY(24px) scale(.92);
+  opacity: 0;
+}
+
+.winner-spotlight__eyebrow {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .26em;
+  color: #ffe45b;
+  text-transform: uppercase;
+}
+
+.winner-spotlight__title {
+  margin-top: 10px;
+  font-family: var(--font-title);
+  font-size: clamp(42px, 8vw, 84px);
+  line-height: .88;
+  letter-spacing: .05em;
+  color: #fff8cc;
+  text-shadow: 0 0 20px rgba(255,228,91,.34), 0 0 60px rgba(255,228,91,.16);
+}
+
+.winner-spotlight__image-wrap {
+  width: min(240px, 54vw);
+  aspect-ratio: 1;
+  margin: 18px auto 14px;
+  padding: 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255,228,91,.96), rgba(255,255,255,.92), rgba(255,228,91,.76));
+  box-shadow: 0 0 34px rgba(255,228,91,.26), 0 0 80px rgba(255,228,91,.12);
+}
+
+.winner-spotlight__image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center top;
+  border-radius: 999px;
+  border: 4px solid rgba(8,9,14,.55);
+  background: #141821;
+}
+
+.winner-spotlight__name {
+  font-family: var(--font-title);
+  font-size: clamp(34px, 6vw, 68px);
+  line-height: .92;
+  letter-spacing: .06em;
+  color: #ffffff;
+  text-shadow: 0 0 18px rgba(255,255,255,.15), 0 0 40px rgba(255,228,91,.14);
+}
+
+.winner-spotlight__sub {
+  margin-top: 10px;
+  color: #dfe6f1;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.winner-spotlight.is-open .winner-spotlight__card {
+  animation: championCardEnter .56s cubic-bezier(.14,.8,.2,1) both;
+}
+
+.winner-spotlight.is-open .winner-spotlight__ray {
+  animation: championSpotlight 1s ease-out both;
+}
+
+.winner-spotlight.is-open .winner-spotlight__particles {
+  opacity: 1;
+}
+
+.battle-screen.is-winner-left .fighter-panel--right,
+.battle-screen.is-winner-right .fighter-panel--left {
+  opacity: .2;
+  filter: grayscale(1) brightness(.48);
+  transform: scale(.97);
+}
+
+.battle-screen.is-winner-left .fighter-panel--left,
+.battle-screen.is-winner-right .fighter-panel--right {
+  transform: scale(1.03);
+}
+
+.battle-screen.is-winner-left .fighter-panel--left .fighter-frame,
+.battle-screen.is-winner-right .fighter-panel--right .fighter-frame {
+  box-shadow: 0 0 40px rgba(255,228,91,.42), 0 0 90px rgba(255,228,91,.16);
+}
+
+.battle-screen.is-winner-left .vs-core,
+.battle-screen.is-winner-right .vs-core {
+  transform: scale(1.14);
+}
+
 .battle-footer {
   position: relative;
   z-index: 3;
   display: grid;
+  justify-items: center;
   gap: 14px;
   padding: 4px 34px 26px;
 }
 
 .battle-status-row,
 .battle-action-row {
+  width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 18px;
   flex-wrap: wrap;
 }
 
 .battle-status-row {
   margin-top: -6px;
+  flex-direction: column;
+}
+
+.battle-action-row {
+  flex-direction: column;
 }
 
 .battle-status {
@@ -1051,11 +1221,27 @@ kbd {
 }
 
 .battle-controls {
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
 }
 
 .tournament-actions[hidden] { display: none; }
+
+.battle-controls,
+.tournament-actions {
+  justify-content: center;
+}
+
+.battle-controls .ui-btn,
+.tournament-actions .ui-btn {
+  justify-content: center;
+}
+
+.tournament-info {
+  justify-content: center;
+  text-align: center;
+}
+
 
 .tournament-info {
   display: inline-flex;
@@ -1199,6 +1385,17 @@ kbd {
 .match-slot__tag { font-size:11px; letter-spacing:.12em; color:#dbe4ef; text-transform:uppercase; }
 .match-slot.is-winner { outline:1px solid rgba(255,228,91,.45); box-shadow: inset 0 0 20px rgba(255,228,91,.08); }
 .match-slot--pending .match-slot__name { color:#7f8a9a; }
+.match-card.is-sealed { border-style: dashed; }
+.match-slot--hidden {
+  background: linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+}
+.match-slot--hidden .match-slot__name {
+  color: #dfe6f1;
+  letter-spacing: .12em;
+}
+.match-slot--hidden .match-slot__tag {
+  color: #98a2b3;
+}
 
 /* Admin shared */
 .admin-shell{max-width:1200px;margin:0 auto;display:grid;gap:20px}
@@ -1344,15 +1541,17 @@ kbd {
   .battle-footer { padding: 0 16px 18px; }
   .fighter-frame { width: min(100%, 360px); aspect-ratio: 4 / 5; height: auto; }
   .nameplate { width: min(94%, 340px); margin-top: -28px; }
-  .battle-status { width: 100%; justify-content: space-between; }
-  .battle-status-row, .battle-action-row { align-items: stretch; }
-  .battle-controls { width: 100%; justify-content: stretch; }
+  .battle-status { width: 100%; justify-content: center; }
+  .battle-status-row, .battle-action-row { align-items: center; }
+  .battle-controls { width: 100%; justify-content: center; }
   .battle-controls .ui-btn { flex: 1 1 calc(50% - 8px); justify-content: center; }
   .match-banner { top: 10px; width: calc(100vw - 16px); }
   .champion-card { padding: 26px 18px 22px; }
   .champion-card__actions { flex-direction: column; }
   .champion-card__actions .ui-btn { width: 100%; }
   .challenge-card { padding: 24px 16px 20px; }
+  .winner-spotlight__card { padding: 24px 18px 20px; }
+  .winner-spotlight__sub { letter-spacing: .12em; }
   .challenge-stage { grid-template-columns: 1fr; }
   .challenge-stage__center { order: -1; min-width: 0; }
   .challenge-card__actions { flex-direction: column; }

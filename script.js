@@ -59,6 +59,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const challengeMessage = document.getElementById("challengeMessage");
   const btnChallengeClose = document.getElementById("btnChallengeClose");
   const btnChallengeReset = document.getElementById("btnChallengeReset");
+  const winnerSpotlight = document.getElementById("winnerSpotlight");
+  const winnerSpotlightImage = document.getElementById("winnerSpotlightImage");
+  const winnerSpotlightName = document.getElementById("winnerSpotlightName");
+  const winnerSpotlightEyebrow = document.getElementById("winnerSpotlightEyebrow");
+  const winnerSpotlightSub = document.getElementById("winnerSpotlightSub");
   const btnShuffleStart = document.getElementById("btnShuffleStart");
   const btnConfirm = document.getElementById("btnConfirm");
   const btnReset = document.getElementById("btnReset");
@@ -88,9 +93,11 @@ document.addEventListener("DOMContentLoaded", () => {
     defendingChampion: null,
     tournament: null,
     scheduledMatch: null,
+    revealScheduledMatch: false,
     particlesFrame: null,
     bannerTimer: null,
-    modalTimer: null
+    modalTimer: null,
+    winnerTimer: null
   };
 
   function openDatabase() {
@@ -322,6 +329,16 @@ document.addEventListener("DOMContentLoaded", () => {
     return { left, right };
   }
 
+
+  function pickPreviewPair(list, avoidIds = []) {
+    const filtered = list.filter((item) => !avoidIds.includes(item.id));
+    if (filtered.length >= 2) {
+      const shuffled = shuffleArray(filtered);
+      return { left: shuffled[0], right: shuffled[1] };
+    }
+    return pickDistinctPair(list);
+  }
+
   function loadTournament() {
     try {
       const raw = localStorage.getItem(TOURNAMENT_KEY);
@@ -531,6 +548,29 @@ document.addEventListener("DOMContentLoaded", () => {
     challengeScreen.classList.remove("is-open");
   }
 
+  function hideWinnerSpotlight() {
+    clearTimeout(state.winnerTimer);
+    battleScreen.classList.remove("is-winner-left", "is-winner-right");
+    winnerSpotlight.hidden = true;
+    winnerSpotlight.classList.remove("is-open");
+  }
+
+  function showWinnerSpotlight(winner, side, subtitle, eyebrow = "MATCH WINNER") {
+    if (!winner) return;
+    clearTimeout(state.winnerTimer);
+    battleScreen.classList.remove("is-winner-left", "is-winner-right");
+    battleScreen.classList.add(side === "left" ? "is-winner-left" : "is-winner-right");
+    winnerSpotlightImage.src = winner.image;
+    winnerSpotlightImage.alt = winner.name;
+    winnerSpotlightName.textContent = winner.name;
+    winnerSpotlightEyebrow.textContent = eyebrow;
+    winnerSpotlightSub.textContent = subtitle;
+    winnerSpotlight.hidden = false;
+    winnerSpotlight.classList.remove("is-open");
+    void winnerSpotlight.offsetWidth;
+    winnerSpotlight.classList.add("is-open");
+  }
+
   function showChampionScreen(champion) {
     if (!champion) return;
     hideChallengeScreen();
@@ -579,10 +619,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (state.tournament && state.scheduledMatch) {
-      renderPair(state.scheduledMatch.left.player, state.scheduledMatch.right.player, {
-        leftBadge: state.scheduledMatch.left.badge,
-        rightBadge: state.scheduledMatch.right.badge
-      });
+      if (state.revealScheduledMatch) {
+        renderPair(state.scheduledMatch.left.player, state.scheduledMatch.right.player, {
+          leftBadge: state.scheduledMatch.left.badge,
+          rightBadge: state.scheduledMatch.right.badge
+        });
+      } else {
+        const preview = pickPreviewPair(state.participants, [
+          state.scheduledMatch.left.player?.id,
+          state.scheduledMatch.right.player?.id
+        ].filter(Boolean));
+        renderPair(preview.left, preview.right, {
+          leftBadge: "RANDOM DRAW",
+          rightBadge: "RANDOM DRAW"
+        });
+      }
       return;
     }
 
@@ -690,6 +741,7 @@ document.addEventListener("DOMContentLoaded", () => {
     battleScreen.classList.add(`is-${phase}`);
     if (phase !== "confirmed") {
       hideMatchBanner();
+    hideWinnerSpotlight();
     }
     updateUiByPhase();
   }
@@ -817,10 +869,12 @@ document.addEventListener("DOMContentLoaded", () => {
     hideMatchBanner();
 
     if (state.tournament && state.scheduledMatch) {
-      renderPair(state.scheduledMatch.left.player, state.scheduledMatch.right.player, {
-        leftBadge: state.scheduledMatch.left.badge,
-        rightBadge: state.scheduledMatch.right.badge
-      });
+      state.revealScheduledMatch = false;
+      const preview = pickPreviewPair(state.participants, [
+        state.scheduledMatch.left.player?.id,
+        state.scheduledMatch.right.player?.id
+      ].filter(Boolean));
+      renderPair(preview.left, preview.right, { leftBadge: "RANDOM DRAW", rightBadge: "RANDOM DRAW" });
     } else {
       const pair = pickDistinctPair(state.participants);
       renderPair(pair.left, pair.right, { leftBadge: "PLAYER 1", rightBadge: "PLAYER 2" });
@@ -876,6 +930,7 @@ document.addEventListener("DOMContentLoaded", () => {
       stopWithSlowdown("right", finalPair.right, finalPair.rightBadge, [85, 120, 160, 220, 290, 380])
     ]);
 
+    state.revealScheduledMatch = !!state.tournament;
     setPhase("confirmed");
     triggerConfirmFx(
       state.tournament ? "TOURNAMENT MATCH LOCKED IN" : "FIGHT CARD LOCKED IN",
@@ -885,8 +940,32 @@ document.addEventListener("DOMContentLoaded", () => {
     state.isBusy = false;
   }
 
-  function getSlotLabel(slot, tournament) {
+  function shouldRevealBracketMatch(tournament, roundIndex, matchIndex) {
+    const match = tournament?.rounds?.[roundIndex]?.matches?.[matchIndex];
+    if (!match) return false;
+    if (match.winnerId) return true;
+
+    const current = getCurrentTournamentMatch(tournament);
+    if (!current) return false;
+    if (roundIndex < current.roundIndex) return true;
+    if (roundIndex === current.roundIndex && matchIndex < current.matchIndex) return true;
+    if (roundIndex === current.roundIndex && matchIndex === current.matchIndex) {
+      return state.phase === "locking" || state.phase === "confirmed" || state.revealScheduledMatch;
+    }
+    return false;
+  }
+
+  function getSlotLabel(slot, tournament, options = {}) {
     const resolved = resolveSlot(slot, tournament);
+    const reveal = options.reveal !== false;
+
+    if (!reveal) {
+      return {
+        name: slot?.type === "winner" ? "WINNER TBD" : "RANDOM DRAW",
+        tag: "SEALED"
+      };
+    }
+
     return {
       name: resolved.player?.name || (slot?.type === "winner" ? "WINNER TBD" : "TBD"),
       tag: resolved.badge
@@ -923,23 +1002,27 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
             <div class="tournament-round__matches">
               ${round.matches.map((match, matchIndex) => {
-                const left = getSlotLabel(match.leftSlot, state.tournament);
-                const right = getSlotLabel(match.rightSlot, state.tournament);
+                const revealMatch = shouldRevealBracketMatch(state.tournament, roundIndex, matchIndex);
+                const left = getSlotLabel(match.leftSlot, state.tournament, { reveal: revealMatch });
+                const right = getSlotLabel(match.rightSlot, state.tournament, { reveal: revealMatch });
                 const leftResolved = resolveSlot(match.leftSlot, state.tournament);
                 const rightResolved = resolveSlot(match.rightSlot, state.tournament);
                 const currentClass = current && current.roundIndex === roundIndex && current.matchIndex === matchIndex ? "is-current" : "";
+                const sealedClass = !revealMatch && !match.winnerId ? "is-sealed" : "";
                 const leftWinner = match.winnerId && leftResolved.player?.id === match.winnerId ? "is-winner" : "";
                 const rightWinner = match.winnerId && rightResolved.player?.id === match.winnerId ? "is-winner" : "";
-                const leftPending = !leftResolved.player ? "match-slot--pending" : "";
-                const rightPending = !rightResolved.player ? "match-slot--pending" : "";
+                const leftPending = revealMatch && !leftResolved.player ? "match-slot--pending" : "";
+                const rightPending = revealMatch && !rightResolved.player ? "match-slot--pending" : "";
+                const leftHidden = !revealMatch && !match.winnerId ? "match-slot--hidden" : "";
+                const rightHidden = !revealMatch && !match.winnerId ? "match-slot--hidden" : "";
                 return `
-                  <article class="match-card ${currentClass}">
+                  <article class="match-card ${currentClass} ${sealedClass}">
                     <div class="match-card__meta">MATCH ${matchIndex + 1}</div>
-                    <div class="match-slot ${leftWinner} ${leftPending}">
+                    <div class="match-slot ${leftWinner} ${leftPending} ${leftHidden}">
                       <span class="match-slot__name">${escapeHtml(left.name)}</span>
                       <span class="match-slot__tag">${escapeHtml(left.tag)}</span>
                     </div>
-                    <div class="match-slot ${rightWinner} ${rightPending}">
+                    <div class="match-slot ${rightWinner} ${rightPending} ${rightHidden}">
                       <span class="match-slot__name">${escapeHtml(right.name)}</span>
                       <span class="match-slot__tag">${escapeHtml(right.tag)}</span>
                     </div>
@@ -961,6 +1044,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const tournament = buildTournament13(state.participants);
+    state.revealScheduledMatch = false;
     saveTournament(tournament);
     refreshTournament();
     await renderScheduledOrFallbackPair();
@@ -971,6 +1055,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function resetTournament() {
     if (!confirm("トーナメント表と進行状況をリセットします。よろしいですか？")) return;
+    state.revealScheduledMatch = false;
     saveTournament(null);
     refreshTournament();
     await renderScheduledOrFallbackPair();
@@ -998,44 +1083,59 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function selectWinner(side) {
     refreshTournament();
-    if (!state.tournament || !state.scheduledMatch || state.phase !== "confirmed") return;
+    if (state.isBusy || !state.tournament || !state.scheduledMatch || state.phase !== "confirmed") return;
 
+    state.isBusy = true;
     const winner = side === "left" ? state.scheduledMatch.left.player : state.scheduledMatch.right.player;
+    const loser = side === "left" ? state.scheduledMatch.right.player : state.scheduledMatch.left.player;
     const round = state.tournament.rounds[state.scheduledMatch.roundIndex];
     const match = round.matches[state.scheduledMatch.matchIndex];
     match.winnerId = winner.id;
 
     const nextMatch = getCurrentTournamentMatch(state.tournament);
+    const isFinal = !nextMatch;
 
-    if (!nextMatch) {
+    if (isFinal) {
       state.tournament.status = "complete";
-      saveTournament(state.tournament);
-      refreshTournament();
-      await renderScheduledOrFallbackPair();
-      updateUiByPhase();
-      triggerConfirmFx("TOURNAMENT RESULT", `${winner.name} WINS`);
-      showChampionScreen(winner);
-      await renderTournamentBracket();
-      return;
     }
 
     saveTournament(state.tournament);
     await renderTournamentBracket();
-    triggerConfirmFx("WINNER LOCKED IN", `${winner.name} ADVANCES`);
+    triggerConfirmFx(isFinal ? "TOURNAMENT RESULT" : "WINNER LOCKED IN", isFinal ? `${winner.name} WINS` : `${winner.name} ADVANCES`);
+    showWinnerSpotlight(
+      winner,
+      side,
+      isFinal ? `${winner.name} IS THE LAST FIGHTER STANDING` : `${winner.name} ADVANCES TO THE NEXT ROUND`,
+      isFinal ? "GRAND WINNER" : "MATCH WINNER"
+    );
 
-    setTimeout(async () => {
+    await wait(1500);
+    hideWinnerSpotlight();
+
+    if (isFinal) {
       refreshTournament();
       await renderScheduledOrFallbackPair();
-      setPhase("idle");
-      if (isTournamentOpen()) {
-        await renderTournamentBracket();
-      }
-    }, 900);
+      updateUiByPhase();
+      await renderTournamentBracket();
+      state.isBusy = false;
+      return;
+    }
+
+    refreshTournament();
+    state.revealScheduledMatch = false;
+    await renderScheduledOrFallbackPair();
+    setPhase("idle");
+    if (isTournamentOpen()) {
+      await renderTournamentBracket();
+    }
+    state.isBusy = false;
   }
 
   async function resetBattle() {
     if (state.phase === "locking" || state.isBusy) return;
     clearTimers();
+    hideWinnerSpotlight();
+    state.revealScheduledMatch = false;
     await renderScheduledOrFallbackPair();
     if (state.tournament?.status === "complete") {
       updateUiByPhase();
@@ -1047,6 +1147,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function startNewTournamentFlow() {
     hideChampionScreen();
     hideChallengeScreen();
+    hideWinnerSpotlight();
     await resetTournament();
     closeTournamentDialog();
   }
@@ -1056,6 +1157,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await refreshParticipants();
     await refreshChampion();
     refreshTournament();
+    state.revealScheduledMatch = false;
     await renderScheduledOrFallbackPair();
     renderHudLabels();
     setPhase("idle");
@@ -1129,6 +1231,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.addEventListener("keydown", (event) => {
       if (event.repeat) return;
+
+      if (event.key === "Escape" && !winnerSpotlight.hidden) {
+        event.preventDefault();
+        hideWinnerSpotlight();
+        return;
+      }
 
       if (event.key === "Escape" && !challengeScreen.hidden) {
         event.preventDefault();
