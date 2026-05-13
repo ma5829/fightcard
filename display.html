@@ -119,6 +119,66 @@
       </div>
     </div>
 
+    <section class="champion-screen" id="championScreen" hidden aria-live="polite">
+      <div class="champion-screen__bg"></div>
+      <div class="champion-screen__spotlight champion-screen__spotlight--left"></div>
+      <div class="champion-screen__spotlight champion-screen__spotlight--right"></div>
+      <div class="champion-screen__confetti"></div>
+      <div class="champion-card">
+        <div class="champion-card__eyebrow">TOURNAMENT CHAMPION</div>
+        <div class="champion-card__title">GRAND WINNER</div>
+        <div class="champion-card__image-wrap">
+          <div class="champion-card__crown">👑</div>
+          <img class="champion-card__image" id="championImage" src="" alt="Champion" />
+        </div>
+        <div class="champion-card__name" id="championName">CHAMPION NAME</div>
+        <div class="champion-card__sub" id="championSub">YOU ARE THE LAST FIGHTER STANDING</div>
+        <div class="champion-card__actions">
+          <button class="ui-btn ui-btn--primary" id="btnChampionClose">結果画面を閉じる</button>
+          <button class="ui-btn" id="btnChampionChallenge">ディフェンディング王者戦へ</button>
+          <button class="ui-btn" id="btnChampionReset">新しいトーナメントへ</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="challenge-screen" id="challengeScreen" hidden aria-live="polite">
+      <div class="challenge-screen__bg"></div>
+      <div class="challenge-screen__grid"></div>
+      <div class="challenge-screen__flare challenge-screen__flare--left"></div>
+      <div class="challenge-screen__flare challenge-screen__flare--right"></div>
+      <div class="challenge-screen__particles"></div>
+      <div class="challenge-card">
+        <div class="challenge-card__eyebrow">SPECIAL TITLE MATCH</div>
+        <div class="challenge-card__title">DEFENDING CHAMPION VS TOURNAMENT WINNER</div>
+        <div class="challenge-card__sub" id="challengeMessage">TOURNAMENT WINNER EARNS THE RIGHT TO FACE THE DEFENDING CHAMPION</div>
+        <div class="challenge-stage">
+          <section class="challenge-fighter challenge-fighter--defender">
+            <div class="challenge-fighter__label">DEFENDING CHAMPION</div>
+            <div class="challenge-fighter__frame">
+              <img class="challenge-fighter__image" id="challengeDefenderImage" src="" alt="Defending Champion" />
+            </div>
+            <div class="challenge-fighter__name" id="challengeDefenderName">DEFENDING CHAMPION</div>
+          </section>
+          <div class="challenge-stage__center">
+            <div class="challenge-stage__belt">🏆</div>
+            <div class="challenge-stage__vs">VS</div>
+            <div class="challenge-stage__caption">MAIN EVENT</div>
+          </div>
+          <section class="challenge-fighter challenge-fighter--winner">
+            <div class="challenge-fighter__label">TOURNAMENT WINNER</div>
+            <div class="challenge-fighter__frame">
+              <img class="challenge-fighter__image" id="challengeWinnerImage" src="" alt="Tournament Winner" />
+            </div>
+            <div class="challenge-fighter__name" id="challengeWinnerName">TOURNAMENT WINNER</div>
+          </section>
+        </div>
+        <div class="challenge-card__actions">
+          <button class="ui-btn ui-btn--primary" id="btnChallengeClose">この画面を閉じる</button>
+          <button class="ui-btn" id="btnChallengeReset">新しいトーナメントへ</button>
+        </div>
+      </div>
+    </section>
+
     <p class="help-text">
       <kbd>Space</kbd> シャッフル開始 &nbsp;/&nbsp;
       <kbd>Enter</kbd> 対戦決定 &nbsp;/&nbsp;

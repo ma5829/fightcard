@@ -2,6 +2,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const PARTICIPANT_KEY = "fightcard:participants";
   const TOURNAMENT_KEY = "fightcard:tournament";
 
+  const DEFENDING_CHAMPION = {
+    id: "defending-champion",
+    name: "DEFENDING CHAMPION",
+    image: "",
+    colorA: "#ffe45b",
+    colorB: "#7a5300"
+  };
+
   const baseParticipants = [
     { id: "p1", name: "TAKA", colorA: "#23d8ff", colorB: "#0f3f62" },
     { id: "p2", name: "YUJI", colorA: "#ff4f7d", colorB: "#5f1735" },
@@ -27,6 +35,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const matchBanner = document.getElementById("matchBanner");
   const matchBannerText = matchBanner.querySelector(".match-banner__text");
   const matchBannerEyebrow = matchBanner.querySelector(".match-banner__eyebrow");
+  const championScreen = document.getElementById("championScreen");
+  const championImage = document.getElementById("championImage");
+  const championName = document.getElementById("championName");
+  const championSub = document.getElementById("championSub");
+  const btnChampionClose = document.getElementById("btnChampionClose");
+  const btnChampionChallenge = document.getElementById("btnChampionChallenge");
+  const btnChampionReset = document.getElementById("btnChampionReset");
+  const challengeScreen = document.getElementById("challengeScreen");
+  const challengeDefenderImage = document.getElementById("challengeDefenderImage");
+  const challengeDefenderName = document.getElementById("challengeDefenderName");
+  const challengeWinnerImage = document.getElementById("challengeWinnerImage");
+  const challengeWinnerName = document.getElementById("challengeWinnerName");
+  const challengeMessage = document.getElementById("challengeMessage");
+  const btnChallengeClose = document.getElementById("btnChallengeClose");
+  const btnChallengeReset = document.getElementById("btnChallengeReset");
   const btnShuffleStart = document.getElementById("btnShuffleStart");
   const btnConfirm = document.getElementById("btnConfirm");
   const btnReset = document.getElementById("btnReset");
@@ -59,6 +82,17 @@ document.addEventListener("DOMContentLoaded", () => {
     bannerTimer: null,
     modalTimer: null
   };
+
+  function getDefendingChampion() {
+    return {
+      ...DEFENDING_CHAMPION,
+      image: DEFENDING_CHAMPION.image || createFighterSvgDataUrl(
+        DEFENDING_CHAMPION.name,
+        DEFENDING_CHAMPION.colorA,
+        DEFENDING_CHAMPION.colorB
+      )
+    };
+  }
 
   function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -360,6 +394,47 @@ document.addEventListener("DOMContentLoaded", () => {
     return !tournamentModal.hidden;
   }
 
+  function hideChampionScreen() {
+    championScreen.hidden = true;
+    championScreen.classList.remove("is-open");
+  }
+
+  function hideChallengeScreen() {
+    challengeScreen.hidden = true;
+    challengeScreen.classList.remove("is-open");
+  }
+
+  function showChampionScreen(champion) {
+    if (!champion) return;
+    hideChallengeScreen();
+    championImage.src = champion.image;
+    championImage.alt = champion.name;
+    championName.textContent = champion.name;
+    championSub.textContent = `${champion.name} IS THE LAST FIGHTER STANDING`;
+    championScreen.hidden = false;
+    championScreen.classList.remove("is-open");
+    void championScreen.offsetWidth;
+    championScreen.classList.add("is-open");
+  }
+
+  function showChallengeScreen(winner) {
+    if (!winner) return;
+    const defender = getDefendingChampion();
+    hideChampionScreen();
+    challengeDefenderImage.src = defender.image;
+    challengeDefenderImage.alt = defender.name;
+    challengeDefenderName.textContent = defender.name;
+    challengeWinnerImage.src = winner.image;
+    challengeWinnerImage.alt = winner.name;
+    challengeWinnerName.textContent = winner.name;
+    challengeMessage.textContent = `${winner.name} EARNED THE RIGHT TO CHALLENGE ${defender.name}`;
+    challengeScreen.hidden = false;
+    challengeScreen.classList.remove("is-open");
+    void challengeScreen.offsetWidth;
+    challengeScreen.classList.add("is-open");
+    showMatchBanner("SPECIAL TITLE MATCH", "CHAMPION CHALLENGE", true);
+  }
+
   function renderScheduledOrFallbackPair() {
     refreshParticipants();
     refreshTournament();
@@ -438,6 +513,9 @@ document.addEventListener("DOMContentLoaded", () => {
       btnReset.disabled = false;
       renderHudLabels();
       updateTournamentMeta();
+      if (champion) {
+        showChampionScreen(champion);
+      }
       return;
     }
 
@@ -472,6 +550,8 @@ document.addEventListener("DOMContentLoaded", () => {
         break;
     }
 
+    hideChampionScreen();
+    hideChallengeScreen();
     renderHudLabels();
     updateTournamentMeta();
   }
@@ -806,6 +886,7 @@ document.addEventListener("DOMContentLoaded", () => {
       renderScheduledOrFallbackPair();
       updateUiByPhase();
       triggerConfirmFx("TOURNAMENT RESULT", `${winner.name} WINS`);
+      showChampionScreen(winner);
       renderTournamentBracket();
       return;
     }
@@ -835,6 +916,13 @@ document.addEventListener("DOMContentLoaded", () => {
     setPhase("idle");
   }
 
+  function startNewTournamentFlow() {
+    hideChampionScreen();
+    hideChallengeScreen();
+    resetTournament();
+    closeTournamentDialog();
+  }
+
   function init() {
     refreshParticipants();
     refreshTournament();
@@ -851,6 +939,14 @@ document.addEventListener("DOMContentLoaded", () => {
     btnTournamentReset.addEventListener("click", resetTournament);
     btnWinnerLeft.addEventListener("click", () => selectWinner("left"));
     btnWinnerRight.addEventListener("click", () => selectWinner("right"));
+    btnChampionClose.addEventListener("click", hideChampionScreen);
+    btnChampionChallenge.addEventListener("click", () => {
+      const champion = getChampion(state.tournament);
+      if (champion) showChallengeScreen(champion);
+    });
+    btnChampionReset.addEventListener("click", startNewTournamentFlow);
+    btnChallengeClose.addEventListener("click", hideChallengeScreen);
+    btnChallengeReset.addEventListener("click", startNewTournamentFlow);
     tournamentBackdrop.addEventListener("click", closeTournamentDialog);
 
     window.addEventListener("resize", resizeParticlesCanvas);
@@ -868,6 +964,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.addEventListener("keydown", (event) => {
       if (event.repeat) return;
+
+      if (event.key === "Escape" && !challengeScreen.hidden) {
+        event.preventDefault();
+        hideChallengeScreen();
+        return;
+      }
+
+      if (event.key === "Escape" && !championScreen.hidden) {
+        event.preventDefault();
+        hideChampionScreen();
+        return;
+      }
 
       if (event.key === "Escape" && isTournamentOpen()) {
         event.preventDefault();
