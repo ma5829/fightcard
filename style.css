@@ -895,6 +895,15 @@ kbd {
   border: 1px solid rgba(255,255,255,.14);
 }
 
+.challenge-fighter__title {
+  margin-top: -2px;
+  color: #d6dde8;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
 .challenge-fighter__name {
   font-family: var(--font-title);
   font-size: clamp(28px, 4vw, 54px);
@@ -1281,6 +1290,11 @@ kbd {
   .champion-card { padding: 26px 18px 22px; }
   .champion-card__actions { flex-direction: column; }
   .champion-card__actions .ui-btn { width: 100%; }
+  .challenge-card { padding: 24px 16px 20px; }
+  .challenge-stage { grid-template-columns: 1fr; }
+  .challenge-stage__center { order: -1; min-width: 0; }
+  .challenge-card__actions { flex-direction: column; }
+  .challenge-card__actions .ui-btn { width: 100%; }
   .tournament-panel { width: calc(100vw - 20px); margin: 10px auto; max-height: calc(100vh - 20px); }
   .td-inner { padding: 16px; }
 }

@@ -1,10 +1,12 @@
 document.addEventListener("DOMContentLoaded", () => {
   const PARTICIPANT_KEY = "fightcard:participants";
   const TOURNAMENT_KEY = "fightcard:tournament";
+  const DEFENDING_CHAMPION_KEY = "fightcard:defendingChampion";
 
-  const DEFENDING_CHAMPION = {
+  const DEFAULT_DEFENDING_CHAMPION = {
     id: "defending-champion",
     name: "DEFENDING CHAMPION",
+    title: "TITLE HOLDER",
     image: "",
     colorA: "#ffe45b",
     colorB: "#7a5300"
@@ -44,6 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnChampionReset = document.getElementById("btnChampionReset");
   const challengeScreen = document.getElementById("challengeScreen");
   const challengeDefenderImage = document.getElementById("challengeDefenderImage");
+  const challengeDefenderTitle = document.getElementById("challengeDefenderTitle");
   const challengeDefenderName = document.getElementById("challengeDefenderName");
   const challengeWinnerImage = document.getElementById("challengeWinnerImage");
   const challengeWinnerName = document.getElementById("challengeWinnerName");
@@ -83,13 +86,35 @@ document.addEventListener("DOMContentLoaded", () => {
     modalTimer: null
   };
 
+  function loadStoredDefendingChampion() {
+    try {
+      const raw = localStorage.getItem(DEFENDING_CHAMPION_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (!parsed || typeof parsed !== "object") return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
   function getDefendingChampion() {
+    const stored = loadStoredDefendingChampion();
+    const champion = {
+      ...DEFAULT_DEFENDING_CHAMPION,
+      ...(stored || {}),
+      name: String(stored?.name || DEFAULT_DEFENDING_CHAMPION.name).trim() || DEFAULT_DEFENDING_CHAMPION.name,
+      title: String(stored?.title || DEFAULT_DEFENDING_CHAMPION.title).trim() || DEFAULT_DEFENDING_CHAMPION.title,
+      image: typeof stored?.image === "string" ? stored.image : "",
+      colorA: typeof stored?.colorA === "string" ? stored.colorA : DEFAULT_DEFENDING_CHAMPION.colorA,
+      colorB: typeof stored?.colorB === "string" ? stored.colorB : DEFAULT_DEFENDING_CHAMPION.colorB
+    };
+
     return {
-      ...DEFENDING_CHAMPION,
-      image: DEFENDING_CHAMPION.image || createFighterSvgDataUrl(
-        DEFENDING_CHAMPION.name,
-        DEFENDING_CHAMPION.colorA,
-        DEFENDING_CHAMPION.colorB
+      ...champion,
+      image: champion.image || createFighterSvgDataUrl(
+        champion.name,
+        champion.colorA,
+        champion.colorB
       )
     };
   }
@@ -423,6 +448,7 @@ document.addEventListener("DOMContentLoaded", () => {
     hideChampionScreen();
     challengeDefenderImage.src = defender.image;
     challengeDefenderImage.alt = defender.name;
+    challengeDefenderTitle.textContent = defender.title || DEFAULT_DEFENDING_CHAMPION.title;
     challengeDefenderName.textContent = defender.name;
     challengeWinnerImage.src = winner.image;
     challengeWinnerImage.alt = winner.name;
@@ -958,6 +984,14 @@ document.addEventListener("DOMContentLoaded", () => {
         updateUiByPhase();
         if (isTournamentOpen()) {
           renderTournamentBracket();
+        }
+        return;
+      }
+
+      if (event.key === DEFENDING_CHAMPION_KEY && !challengeScreen.hidden) {
+        const champion = getChampion(state.tournament);
+        if (champion) {
+          showChallengeScreen(champion);
         }
       }
     });
