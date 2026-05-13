@@ -59,11 +59,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const challengeMessage = document.getElementById("challengeMessage");
   const btnChallengeClose = document.getElementById("btnChallengeClose");
   const btnChallengeReset = document.getElementById("btnChallengeReset");
+  const btnChallengeWinnerDefender = document.getElementById("btnChallengeWinnerDefender");
+  const btnChallengeWinnerChallenger = document.getElementById("btnChallengeWinnerChallenger");
   const winnerSpotlight = document.getElementById("winnerSpotlight");
   const winnerSpotlightImage = document.getElementById("winnerSpotlightImage");
   const winnerSpotlightName = document.getElementById("winnerSpotlightName");
   const winnerSpotlightEyebrow = document.getElementById("winnerSpotlightEyebrow");
+  const winnerSpotlightTitle = document.getElementById("winnerSpotlightTitle");
   const winnerSpotlightSub = document.getElementById("winnerSpotlightSub");
+  const btnWinnerSpotlightClose = document.getElementById("btnWinnerSpotlightClose");
+  const btnWinnerSpotlightReset = document.getElementById("btnWinnerSpotlightReset");
   const btnShuffleStart = document.getElementById("btnShuffleStart");
   const btnConfirm = document.getElementById("btnConfirm");
   const btnReset = document.getElementById("btnReset");
@@ -94,6 +99,8 @@ document.addEventListener("DOMContentLoaded", () => {
     tournament: null,
     scheduledMatch: null,
     revealScheduledMatch: false,
+    specialChallenge: null,
+    winnerOverlayAction: null,
     particlesFrame: null,
     bannerTimer: null,
     modalTimer: null,
@@ -255,6 +262,38 @@ document.addEventListener("DOMContentLoaded", () => {
           <path d="M300 520 C320 400, 390 330, 460 330 C530 330, 600 400, 620 520 Z" fill="rgba(255,255,255,0.88)" />
         </g>
         <text x="40" y="545" font-size="108" font-family="Impact, Arial Black, sans-serif" fill="rgba(255,255,255,0.24)" letter-spacing="4">${safeName}</text>
+      </svg>
+    `;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  }
+
+  function createMysterySvgDataUrl(colorA, colorB) {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="900" height="1100" viewBox="0 0 900 1100">
+        <defs>
+          <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stop-color="${colorA}" />
+            <stop offset="100%" stop-color="${colorB}" />
+          </linearGradient>
+          <radialGradient id="glow" cx="50%" cy="32%" r="60%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.22)" />
+            <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+          </radialGradient>
+        </defs>
+        <rect width="900" height="1100" fill="url(#bg)" />
+        <rect width="900" height="1100" fill="rgba(4,6,10,0.58)" />
+        <rect width="900" height="1100" fill="url(#glow)" />
+        <g opacity="0.14">
+          <path d="M0 130 L900 0 L900 82 L0 214 Z" fill="white"/>
+          <path d="M0 430 L900 300 L900 384 L0 514 Z" fill="white"/>
+          <path d="M0 820 L900 660 L900 742 L0 904 Z" fill="white"/>
+        </g>
+        <g opacity="0.82" fill="rgba(255,255,255,0.88)">
+          <ellipse cx="450" cy="330" rx="148" ry="154"/>
+          <path d="M212 924 C244 704, 334 574, 450 574 C566 574, 656 704, 688 924 Z"/>
+        </g>
+        <text x="450" y="412" text-anchor="middle" font-size="250" font-family="Impact, Arial Black, sans-serif" fill="rgba(255,255,255,0.94)">?</text>
+        <text x="450" y="1010" text-anchor="middle" font-size="180" font-family="Impact, Arial Black, sans-serif" fill="rgba(255,255,255,0.18)" letter-spacing="18">???</text>
       </svg>
     `;
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
@@ -513,6 +552,23 @@ document.addEventListener("DOMContentLoaded", () => {
     renderSide("right", right, meta.rightBadge);
   }
 
+  function renderMysteryPair(meta = {}) {
+    const leftMystery = {
+      id: "mystery-left",
+      name: "???",
+      image: createMysterySvgDataUrl("#23d8ff", "#0b1b2d")
+    };
+    const rightMystery = {
+      id: "mystery-right",
+      name: "???",
+      image: createMysterySvgDataUrl("#ff4f7d", "#2b0b18")
+    };
+    renderPair(leftMystery, rightMystery, {
+      leftBadge: meta.leftBadge || "SEALED",
+      rightBadge: meta.rightBadge || "SEALED"
+    });
+  }
+
   function hideMatchBanner() {
     clearTimeout(state.bannerTimer);
     matchBanner.classList.remove("is-active");
@@ -546,17 +602,39 @@ document.addEventListener("DOMContentLoaded", () => {
   function hideChallengeScreen() {
     challengeScreen.hidden = true;
     challengeScreen.classList.remove("is-open");
+    state.specialChallenge = null;
   }
 
-  function hideWinnerSpotlight() {
+  async function hideWinnerSpotlight(runAction = true, actionType = "close") {
     clearTimeout(state.winnerTimer);
     battleScreen.classList.remove("is-winner-left", "is-winner-right");
     winnerSpotlight.hidden = true;
-    winnerSpotlight.classList.remove("is-open");
+    winnerSpotlight.classList.remove("is-open", "winner-spotlight--finale");
+    const action = state.winnerOverlayAction;
+    state.winnerOverlayAction = null;
+    if (!runAction || !action) return;
+    if (actionType === "reset" && typeof action.onReset === "function") {
+      await action.onReset();
+      return;
+    }
+    if (typeof action.onClose === "function") {
+      await action.onClose();
+    }
   }
 
-  function showWinnerSpotlight(winner, side, subtitle, eyebrow = "MATCH WINNER") {
+  function showWinnerSpotlight(winner, side, options = {}) {
     if (!winner) return;
+    const {
+      title = "WINNER",
+      subtitle = `${winner.name} ADVANCES`,
+      eyebrow = "MATCH WINNER",
+      closeLabel = "閉じる",
+      showReset = false,
+      finale = false,
+      onClose = null,
+      onReset = null
+    } = options;
+
     clearTimeout(state.winnerTimer);
     battleScreen.classList.remove("is-winner-left", "is-winner-right");
     battleScreen.classList.add(side === "left" ? "is-winner-left" : "is-winner-right");
@@ -564,9 +642,16 @@ document.addEventListener("DOMContentLoaded", () => {
     winnerSpotlightImage.alt = winner.name;
     winnerSpotlightName.textContent = winner.name;
     winnerSpotlightEyebrow.textContent = eyebrow;
+    winnerSpotlightTitle.textContent = title;
     winnerSpotlightSub.textContent = subtitle;
+    btnWinnerSpotlightClose.textContent = closeLabel;
+    btnWinnerSpotlightReset.hidden = !showReset;
     winnerSpotlight.hidden = false;
-    winnerSpotlight.classList.remove("is-open");
+    winnerSpotlight.classList.remove("is-open", "winner-spotlight--finale");
+    if (finale) {
+      winnerSpotlight.classList.add("winner-spotlight--finale");
+    }
+    state.winnerOverlayAction = { onClose, onReset };
     void winnerSpotlight.offsetWidth;
     winnerSpotlight.classList.add("is-open");
   }
@@ -588,6 +673,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!winner) return;
     const defender = getDefendingChampion();
     hideChampionScreen();
+    state.specialChallenge = { defender, challenger: winner };
     challengeDefenderImage.src = defender.image;
     challengeDefenderImage.alt = defender.name;
     challengeDefenderTitle.textContent = defender.title || DEFAULT_DEFENDING_CHAMPION.title;
@@ -625,22 +711,12 @@ document.addEventListener("DOMContentLoaded", () => {
           rightBadge: state.scheduledMatch.right.badge
         });
       } else {
-        const preview = pickPreviewPair(state.participants, [
-          state.scheduledMatch.left.player?.id,
-          state.scheduledMatch.right.player?.id
-        ].filter(Boolean));
-        renderPair(preview.left, preview.right, {
-          leftBadge: "RANDOM DRAW",
-          rightBadge: "RANDOM DRAW"
-        });
+        renderMysteryPair({ leftBadge: "RANDOM DRAW", rightBadge: "RANDOM DRAW" });
       }
       return;
     }
 
-    if (state.participants.length >= 2) {
-      const pair = pickDistinctPair(state.participants);
-      renderPair(pair.left, pair.right);
-    }
+    renderMysteryPair({ leftBadge: "UNKNOWN", rightBadge: "UNKNOWN" });
   }
 
   function renderHudLabels() {
@@ -741,7 +817,7 @@ document.addEventListener("DOMContentLoaded", () => {
     battleScreen.classList.add(`is-${phase}`);
     if (phase !== "confirmed") {
       hideMatchBanner();
-    hideWinnerSpotlight();
+      void hideWinnerSpotlight(false);
     }
     updateUiByPhase();
   }
@@ -867,18 +943,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     clearTimers();
     hideMatchBanner();
-
-    if (state.tournament && state.scheduledMatch) {
-      state.revealScheduledMatch = false;
-      const preview = pickPreviewPair(state.participants, [
-        state.scheduledMatch.left.player?.id,
-        state.scheduledMatch.right.player?.id
-      ].filter(Boolean));
-      renderPair(preview.left, preview.right, { leftBadge: "RANDOM DRAW", rightBadge: "RANDOM DRAW" });
-    } else {
-      const pair = pickDistinctPair(state.participants);
-      renderPair(pair.left, pair.right, { leftBadge: "PLAYER 1", rightBadge: "PLAYER 2" });
-    }
+    await hideWinnerSpotlight(false);
+    renderMysteryPair({ leftBadge: state.tournament ? "RANDOM DRAW" : "UNKNOWN", rightBadge: state.tournament ? "RANDOM DRAW" : "UNKNOWN" });
 
     setPhase("shuffling");
     state.leftTimer = setInterval(tickLeft, 68);
@@ -1087,7 +1153,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     state.isBusy = true;
     const winner = side === "left" ? state.scheduledMatch.left.player : state.scheduledMatch.right.player;
-    const loser = side === "left" ? state.scheduledMatch.right.player : state.scheduledMatch.left.player;
     const round = state.tournament.rounds[state.scheduledMatch.roundIndex];
     const match = round.matches[state.scheduledMatch.matchIndex];
     match.winnerId = winner.id;
@@ -1102,39 +1167,70 @@ document.addEventListener("DOMContentLoaded", () => {
     saveTournament(state.tournament);
     await renderTournamentBracket();
     triggerConfirmFx(isFinal ? "TOURNAMENT RESULT" : "WINNER LOCKED IN", isFinal ? `${winner.name} WINS` : `${winner.name} ADVANCES`);
-    showWinnerSpotlight(
-      winner,
-      side,
-      isFinal ? `${winner.name} IS THE LAST FIGHTER STANDING` : `${winner.name} ADVANCES TO THE NEXT ROUND`,
-      isFinal ? "GRAND WINNER" : "MATCH WINNER"
-    );
+    showWinnerSpotlight(winner, side, {
+      eyebrow: isFinal ? "GRAND WINNER" : "MATCH WINNER",
+      title: isFinal ? "TOURNAMENT CHAMPION" : "WINNER",
+      subtitle: isFinal ? `${winner.name} IS THE LAST FIGHTER STANDING` : `${winner.name} ADVANCES TO THE NEXT ROUND`,
+      closeLabel: isFinal ? "優勝画面へ" : "次の試合へ",
+      finale: isFinal,
+      onClose: async () => {
+        if (isFinal) {
+          refreshTournament();
+          await renderScheduledOrFallbackPair();
+          updateUiByPhase();
+          await renderTournamentBracket();
+          state.isBusy = false;
+          return;
+        }
 
-    await wait(1500);
-    hideWinnerSpotlight();
+        refreshTournament();
+        state.revealScheduledMatch = false;
+        await renderScheduledOrFallbackPair();
+        setPhase("idle");
+        if (isTournamentOpen()) {
+          await renderTournamentBracket();
+        }
+        state.isBusy = false;
+      }
+    });
+  }
 
-    if (isFinal) {
-      refreshTournament();
-      await renderScheduledOrFallbackPair();
-      updateUiByPhase();
-      await renderTournamentBracket();
-      state.isBusy = false;
-      return;
-    }
+  async function selectSpecialBattleWinner(side) {
+    if (state.isBusy || !state.specialChallenge) return;
 
-    refreshTournament();
-    state.revealScheduledMatch = false;
-    await renderScheduledOrFallbackPair();
-    setPhase("idle");
-    if (isTournamentOpen()) {
-      await renderTournamentBracket();
-    }
-    state.isBusy = false;
+    state.isBusy = true;
+    const defender = state.specialChallenge.defender;
+    const challenger = state.specialChallenge.challenger;
+    const winner = side === "left" ? defender : challenger;
+
+    renderPair(defender, challenger, {
+      leftBadge: defender.title || "CHAMPION",
+      rightBadge: "CHALLENGER"
+    });
+    triggerConfirmFx("WORLD TITLE DECIDED", `${winner.name} WINS THE MAIN EVENT`);
+    showWinnerSpotlight(winner, side, {
+      eyebrow: side === "left" ? "STILL THE CHAMPION" : "NEW CHAMPION",
+      title: side === "left" ? "TITLE DEFENSE" : "NEW ERA",
+      subtitle: side === "left" ? `${winner.name} DEFENDS THE BELT` : `${winner.name} CONQUERS THE CHAMPION`,
+      closeLabel: "フィナーレを閉じる",
+      showReset: true,
+      finale: true,
+      onClose: async () => {
+        hideChallengeScreen();
+        state.isBusy = false;
+      },
+      onReset: async () => {
+        hideChallengeScreen();
+        state.isBusy = false;
+        await startNewTournamentFlow();
+      }
+    });
   }
 
   async function resetBattle() {
     if (state.phase === "locking" || state.isBusy) return;
     clearTimers();
-    hideWinnerSpotlight();
+    await hideWinnerSpotlight(false);
     state.revealScheduledMatch = false;
     await renderScheduledOrFallbackPair();
     if (state.tournament?.status === "complete") {
@@ -1147,7 +1243,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function startNewTournamentFlow() {
     hideChampionScreen();
     hideChallengeScreen();
-    hideWinnerSpotlight();
+    await hideWinnerSpotlight(false);
     await resetTournament();
     closeTournamentDialog();
   }
@@ -1180,6 +1276,14 @@ document.addEventListener("DOMContentLoaded", () => {
     btnChampionReset.addEventListener("click", startNewTournamentFlow);
     btnChallengeClose.addEventListener("click", hideChallengeScreen);
     btnChallengeReset.addEventListener("click", startNewTournamentFlow);
+    btnChallengeWinnerDefender.addEventListener("click", () => selectSpecialBattleWinner("left"));
+    btnChallengeWinnerChallenger.addEventListener("click", () => selectSpecialBattleWinner("right"));
+    btnWinnerSpotlightClose.addEventListener("click", async () => {
+      await hideWinnerSpotlight(true, "close");
+    });
+    btnWinnerSpotlightReset.addEventListener("click", async () => {
+      await hideWinnerSpotlight(true, "reset");
+    });
     tournamentBackdrop.addEventListener("click", closeTournamentDialog);
 
     window.addEventListener("resize", resizeParticlesCanvas);
@@ -1234,7 +1338,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (event.key === "Escape" && !winnerSpotlight.hidden) {
         event.preventDefault();
-        hideWinnerSpotlight();
+        void hideWinnerSpotlight(true, "close");
         return;
       }
 

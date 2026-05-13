@@ -986,6 +986,14 @@ kbd {
   flex-wrap: wrap;
 }
 
+.challenge-card__actions--decision {
+  margin-top: 30px;
+}
+
+.challenge-card__actions--decision .ui-btn {
+  min-width: 220px;
+}
+
 .challenge-screen.is-open .challenge-card {
   animation: championCardEnter .7s cubic-bezier(.14,.8,.2,1) both;
 }
@@ -1053,10 +1061,10 @@ kbd {
 .winner-spotlight__card {
   position: relative;
   z-index: 2;
-  width: min(500px, calc(100vw - 28px));
-  padding: 28px 24px 24px;
+  width: min(720px, calc(100vw - 28px));
+  padding: 38px 30px 30px;
   border: 1px solid rgba(255,255,255,.16);
-  border-radius: 28px;
+  border-radius: 32px;
   text-align: center;
   background:
     linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.03)),
@@ -1064,6 +1072,29 @@ kbd {
   box-shadow: 0 24px 90px rgba(0,0,0,.55), 0 0 0 1px rgba(255,228,91,.08), 0 0 50px rgba(255,228,91,.16);
   transform: translateY(24px) scale(.92);
   opacity: 0;
+}
+
+.winner-spotlight--finale {
+  z-index: 138;
+}
+
+.winner-spotlight--finale .winner-spotlight__bg {
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255,228,91,.34), transparent 24%),
+    radial-gradient(circle at 50% 64%, rgba(255,255,255,.10), transparent 28%),
+    radial-gradient(circle at 18% 40%, rgba(45,215,255,.14), transparent 24%),
+    radial-gradient(circle at 82% 40%, rgba(255,61,104,.18), transparent 24%),
+    linear-gradient(180deg, rgba(5,6,10,.14), rgba(2,3,6,.84));
+}
+
+.winner-spotlight--finale .winner-spotlight__card {
+  width: min(980px, calc(100vw - 28px));
+  padding: 48px 38px 38px;
+  border-radius: 36px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.04)),
+    linear-gradient(145deg, rgba(255,228,91,.24), rgba(255,255,255,.08) 25%, rgba(255,61,104,.14) 56%, rgba(45,215,255,.16));
+  box-shadow: 0 28px 120px rgba(0,0,0,.62), 0 0 0 1px rgba(255,228,91,.12), 0 0 120px rgba(255,228,91,.24);
 }
 
 .winner-spotlight__eyebrow {
@@ -1077,21 +1108,31 @@ kbd {
 .winner-spotlight__title {
   margin-top: 10px;
   font-family: var(--font-title);
-  font-size: clamp(42px, 8vw, 84px);
+  font-size: clamp(56px, 9vw, 118px);
   line-height: .88;
   letter-spacing: .05em;
   color: #fff8cc;
   text-shadow: 0 0 20px rgba(255,228,91,.34), 0 0 60px rgba(255,228,91,.16);
 }
 
+.winner-spotlight--finale .winner-spotlight__title {
+  font-size: clamp(70px, 10vw, 160px);
+}
+
 .winner-spotlight__image-wrap {
-  width: min(240px, 54vw);
+  width: min(320px, 56vw);
   aspect-ratio: 1;
-  margin: 18px auto 14px;
-  padding: 10px;
+  margin: 22px auto 18px;
+  padding: 12px;
   border-radius: 999px;
   background: linear-gradient(135deg, rgba(255,228,91,.96), rgba(255,255,255,.92), rgba(255,228,91,.76));
   box-shadow: 0 0 34px rgba(255,228,91,.26), 0 0 80px rgba(255,228,91,.12);
+}
+
+.winner-spotlight--finale .winner-spotlight__image-wrap {
+  width: min(380px, 62vw);
+  padding: 14px;
+  box-shadow: 0 0 44px rgba(255,228,91,.34), 0 0 120px rgba(255,228,91,.18);
 }
 
 .winner-spotlight__image {
@@ -1107,20 +1148,41 @@ kbd {
 
 .winner-spotlight__name {
   font-family: var(--font-title);
-  font-size: clamp(34px, 6vw, 68px);
+  font-size: clamp(52px, 8vw, 96px);
   line-height: .92;
   letter-spacing: .06em;
   color: #ffffff;
   text-shadow: 0 0 18px rgba(255,255,255,.15), 0 0 40px rgba(255,228,91,.14);
 }
 
+.winner-spotlight--finale .winner-spotlight__name {
+  font-size: clamp(62px, 9vw, 120px);
+}
+
 .winner-spotlight__sub {
-  margin-top: 10px;
+  margin-top: 12px;
   color: #dfe6f1;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
-  letter-spacing: .18em;
+  letter-spacing: .22em;
   text-transform: uppercase;
+}
+
+.winner-spotlight--finale .winner-spotlight__sub {
+  font-size: 17px;
+  letter-spacing: .24em;
+}
+
+.winner-spotlight__actions {
+  margin-top: 28px;
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.winner-spotlight__actions .ui-btn {
+  min-width: 180px;
 }
 
 .winner-spotlight.is-open .winner-spotlight__card {
@@ -1550,8 +1612,11 @@ kbd {
   .champion-card__actions { flex-direction: column; }
   .champion-card__actions .ui-btn { width: 100%; }
   .challenge-card { padding: 24px 16px 20px; }
-  .winner-spotlight__card { padding: 24px 18px 20px; }
+  .winner-spotlight__card { padding: 26px 18px 22px; width: calc(100vw - 18px); }
+  .winner-spotlight--finale .winner-spotlight__card { padding: 28px 18px 24px; width: calc(100vw - 18px); }
   .winner-spotlight__sub { letter-spacing: .12em; }
+  .winner-spotlight__actions { flex-direction: column; }
+  .winner-spotlight__actions .ui-btn { width: 100%; }
   .challenge-stage { grid-template-columns: 1fr; }
   .challenge-stage__center { order: -1; min-width: 0; }
   .challenge-card__actions { flex-direction: column; }

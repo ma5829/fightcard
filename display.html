@@ -173,6 +173,10 @@
             <div class="challenge-fighter__name" id="challengeWinnerName">TOURNAMENT WINNER</div>
           </section>
         </div>
+        <div class="challenge-card__actions challenge-card__actions--decision">
+          <button class="ui-btn ui-btn--winner-left" id="btnChallengeWinnerDefender">王者を勝者にする</button>
+          <button class="ui-btn ui-btn--winner-right" id="btnChallengeWinnerChallenger">挑戦者を勝者にする</button>
+        </div>
         <div class="challenge-card__actions">
           <button class="ui-btn ui-btn--primary" id="btnChallengeClose">この画面を閉じる</button>
           <button class="ui-btn" id="btnChallengeReset">新しいトーナメントへ</button>
@@ -187,12 +191,16 @@
       <div class="winner-spotlight__particles"></div>
       <div class="winner-spotlight__card">
         <div class="winner-spotlight__eyebrow" id="winnerSpotlightEyebrow">MATCH WINNER</div>
-        <div class="winner-spotlight__title">WINNER</div>
+        <div class="winner-spotlight__title" id="winnerSpotlightTitle">WINNER</div>
         <div class="winner-spotlight__image-wrap">
           <img class="winner-spotlight__image" id="winnerSpotlightImage" src="" alt="Winner" />
         </div>
         <div class="winner-spotlight__name" id="winnerSpotlightName">PLAYER NAME</div>
         <div class="winner-spotlight__sub" id="winnerSpotlightSub">ADVANCES TO THE NEXT ROUND</div>
+        <div class="winner-spotlight__actions">
+          <button class="ui-btn ui-btn--primary" id="btnWinnerSpotlightClose">閉じる</button>
+          <button class="ui-btn" id="btnWinnerSpotlightReset" hidden>新しいトーナメントへ</button>
+        </div>
       </div>
     </section>
 
