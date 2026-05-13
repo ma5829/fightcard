@@ -45,8 +45,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function saveParticipants(list) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    localStorage.removeItem(TOURNAMENT_KEY);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      localStorage.removeItem(TOURNAMENT_KEY);
+      return true;
+    } catch (error) {
+      console.error('Failed to save participants', error);
+      alert('画像データの保存容量が足りない可能性があります。画像を自動圧縮する修正を入れましたが、まだ保存できない場合はより小さい画像でお試しください。');
+      return false;
+    }
   }
 
   function loadChampion() {
@@ -69,11 +76,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function saveChampion(data) {
-    localStorage.setItem(DEFENDING_CHAMPION_KEY, JSON.stringify({
-      ...DEFAULT_DEFENDING_CHAMPION,
-      ...data,
-      updatedAt: Date.now()
-    }));
+    try {
+      localStorage.setItem(DEFENDING_CHAMPION_KEY, JSON.stringify({
+        ...DEFAULT_DEFENDING_CHAMPION,
+        ...data,
+        updatedAt: Date.now()
+      }));
+      return true;
+    } catch (error) {
+      console.error('Failed to save champion', error);
+      alert('王者画像の保存に失敗しました。画像サイズが大きすぎる可能性があります。');
+      return false;
+    }
   }
 
   function createId() {
@@ -129,6 +143,41 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  }
+
+  function loadImageElement(dataUrl) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = dataUrl;
+    });
+  }
+
+  async function optimizeImageFile(file, options = {}) {
+    const {
+      maxWidth = 1280,
+      maxHeight = 1280,
+      mimeType = 'image/jpeg',
+      quality = 0.82
+    } = options;
+
+    const rawDataUrl = await readFileAsDataURL(file);
+    const image = await loadImageElement(rawDataUrl);
+    const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#10141d';
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+
+    const compressed = canvas.toDataURL(mimeType, quality);
+    return compressed.length < rawDataUrl.length ? compressed : rawDataUrl;
   }
 
   function renderChampionPreview(data) {
@@ -209,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    currentChampionImageData = await readFileAsDataURL(file);
+    currentChampionImageData = await optimizeImageFile(file, { maxWidth: 1400, maxHeight: 1400, quality: 0.84 });
     renderChampionPreview({
       name: championName.value.trim() || DEFAULT_DEFENDING_CHAMPION.name,
       title: championTitle.value.trim() || DEFAULT_DEFENDING_CHAMPION.title,
@@ -252,11 +301,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!currentChampionImageData) {
       const file = championImage.files?.[0];
       if (file) {
-        currentChampionImageData = await readFileAsDataURL(file);
+        currentChampionImageData = await optimizeImageFile(file, { maxWidth: 1400, maxHeight: 1400, quality: 0.84 });
       }
     }
 
-    saveChampion({
+    const saved = saveChampion({
       id: DEFAULT_DEFENDING_CHAMPION.id,
       name,
       title,
@@ -265,6 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
       colorB: DEFAULT_DEFENDING_CHAMPION.colorB
     });
 
+    if (!saved) return;
     fillChampionForm(loadChampion());
     alert('ディフェンディングチャンピオン設定を保存しました。');
   });
@@ -285,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    currentImageData = await readFileAsDataURL(file);
+    currentImageData = await optimizeImageFile(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.82 });
     previewImage.src = currentImageData;
     previewImage.hidden = false;
     previewEmpty.hidden = true;
@@ -306,7 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('顔写真を選択してください。');
         return;
       }
-      currentImageData = await readFileAsDataURL(file);
+      currentImageData = await optimizeImageFile(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.82 });
     }
 
     const next = [
@@ -319,7 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     ];
 
-    saveParticipants(next);
+    const saved = saveParticipants(next);
+    if (!saved) return;
     renderList();
     resetForm();
   });
@@ -328,7 +379,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnClearAll.addEventListener('click', () => {
     if (!confirm('登録済み参加者をすべて削除します。よろしいですか？')) return;
-    saveParticipants([]);
+    const saved = saveParticipants([]);
+    if (!saved) return;
     renderList();
   });
 
@@ -345,7 +397,8 @@ document.addEventListener('DOMContentLoaded', () => {
       createdAt: Date.now()
     }));
 
-    saveParticipants([...loadParticipants(), ...samples]);
+    const saved = saveParticipants([...loadParticipants(), ...samples]);
+    if (!saved) return;
     renderList();
   });
 
