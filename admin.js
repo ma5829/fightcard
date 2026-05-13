@@ -1,7 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const STORAGE_KEY = 'fightcard:participants';
   const TOURNAMENT_KEY = 'fightcard:tournament';
-  const DEFENDING_CHAMPION_KEY = 'fightcard:defendingChampion';
+  const LEGACY_PARTICIPANT_KEY = 'fightcard:participants';
+  const LEGACY_CHAMPION_KEY = 'fightcard:defendingChampion';
+  const SYNC_EVENT_KEY = 'fightcard:sync';
+  const DB_NAME = 'fightcard-db';
+  const DB_VERSION = 1;
+  const PARTICIPANT_STORE = 'participants';
+  const SETTINGS_STORE = 'settings';
+  const CHAMPION_SETTING_KEY = 'defendingChampion';
+  const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('fightcard-sync') : null;
+
   const DEFAULT_DEFENDING_CHAMPION = {
     id: 'defending-champion',
     name: 'DEFENDING CHAMPION',
@@ -34,60 +42,170 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentImageData = '';
   let currentChampionImageData = '';
 
-  function loadParticipants() {
+  function notifyDataChanged(type) {
+    const payload = JSON.stringify({ type, ts: Date.now() });
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
+      localStorage.setItem(SYNC_EVENT_KEY, payload);
+    } catch {}
+    try {
+      syncChannel?.postMessage({ type, ts: Date.now() });
+    } catch {}
   }
 
-  function saveParticipants(list) {
+  function openDatabase() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(PARTICIPANT_STORE)) {
+          db.createObjectStore(PARTICIPANT_STORE, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(SETTINGS_STORE)) {
+          db.createObjectStore(SETTINGS_STORE, { keyPath: 'key' });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function withStore(storeName, mode, handler) {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, mode);
+      const store = tx.objectStore(storeName);
+      let result;
+      try {
+        result = handler(store, tx);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = () => reject(tx.error || new Error('IndexedDB transaction failed'));
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
+    }).finally(() => db.close());
+  }
+
+  async function loadParticipants() {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(PARTICIPANT_STORE, 'readonly');
+      const store = tx.objectStore(PARTICIPANT_STORE);
+      const request = store.getAll();
+      request.onsuccess = () => {
+        const rows = Array.isArray(request.result) ? request.result : [];
+        rows.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        resolve(rows);
+      };
+      request.onerror = () => reject(request.error);
+      tx.oncomplete = () => db.close();
+      tx.onabort = tx.onerror = () => db.close();
+    });
+  }
+
+  async function addParticipant(player) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      await withStore(PARTICIPANT_STORE, 'readwrite', (store) => {
+        store.put(player);
+      });
       localStorage.removeItem(TOURNAMENT_KEY);
+      notifyDataChanged('participants');
       return true;
     } catch (error) {
-      console.error('Failed to save participants', error);
-      alert('画像データの保存容量が足りない可能性があります。画像を自動圧縮する修正を入れましたが、まだ保存できない場合はより小さい画像でお試しください。');
+      console.error('Failed to save participant', error);
+      alert('参加者の保存に失敗しました。ブラウザ容量の上限、またはプライベートモードの制限の可能性があります。');
       return false;
     }
   }
 
-  function loadChampion() {
+  async function removeParticipant(id) {
+    await withStore(PARTICIPANT_STORE, 'readwrite', (store) => {
+      store.delete(id);
+    });
+    localStorage.removeItem(TOURNAMENT_KEY);
+    notifyDataChanged('participants');
+  }
+
+  async function clearParticipants() {
+    await withStore(PARTICIPANT_STORE, 'readwrite', (store) => {
+      store.clear();
+    });
+    localStorage.removeItem(TOURNAMENT_KEY);
+    notifyDataChanged('participants');
+  }
+
+  async function addParticipants(players) {
     try {
-      const raw = localStorage.getItem(DEFENDING_CHAMPION_KEY);
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (!parsed || typeof parsed !== 'object') {
-        return { ...DEFAULT_DEFENDING_CHAMPION };
-      }
-      return {
-        ...DEFAULT_DEFENDING_CHAMPION,
-        ...parsed,
-        name: String(parsed.name || DEFAULT_DEFENDING_CHAMPION.name).trim() || DEFAULT_DEFENDING_CHAMPION.name,
-        title: String(parsed.title || DEFAULT_DEFENDING_CHAMPION.title).trim() || DEFAULT_DEFENDING_CHAMPION.title,
-        image: typeof parsed.image === 'string' ? parsed.image : ''
-      };
+      await withStore(PARTICIPANT_STORE, 'readwrite', (store) => {
+        players.forEach((player) => store.put(player));
+      });
+      localStorage.removeItem(TOURNAMENT_KEY);
+      notifyDataChanged('participants');
+      return true;
+    } catch (error) {
+      console.error('Failed to save sample participants', error);
+      alert('サンプル参加者の保存に失敗しました。');
+      return false;
+    }
+  }
+
+  async function loadChampion() {
+    try {
+      const db = await openDatabase();
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(SETTINGS_STORE, 'readonly');
+        const store = tx.objectStore(SETTINGS_STORE);
+        const request = store.get(CHAMPION_SETTING_KEY);
+        request.onsuccess = () => {
+          const row = request.result?.value;
+          if (!row || typeof row !== 'object') {
+            resolve({ ...DEFAULT_DEFENDING_CHAMPION });
+            return;
+          }
+          resolve({
+            ...DEFAULT_DEFENDING_CHAMPION,
+            ...row,
+            name: String(row.name || DEFAULT_DEFENDING_CHAMPION.name).trim() || DEFAULT_DEFENDING_CHAMPION.name,
+            title: String(row.title || DEFAULT_DEFENDING_CHAMPION.title).trim() || DEFAULT_DEFENDING_CHAMPION.title,
+            image: typeof row.image === 'string' ? row.image : ''
+          });
+        };
+        request.onerror = () => reject(request.error);
+        tx.oncomplete = () => db.close();
+        tx.onabort = tx.onerror = () => db.close();
+      });
     } catch {
       return { ...DEFAULT_DEFENDING_CHAMPION };
     }
   }
 
-  function saveChampion(data) {
+  async function saveChampion(data) {
     try {
-      localStorage.setItem(DEFENDING_CHAMPION_KEY, JSON.stringify({
-        ...DEFAULT_DEFENDING_CHAMPION,
-        ...data,
-        updatedAt: Date.now()
-      }));
+      await withStore(SETTINGS_STORE, 'readwrite', (store) => {
+        store.put({
+          key: CHAMPION_SETTING_KEY,
+          value: {
+            ...DEFAULT_DEFENDING_CHAMPION,
+            ...data,
+            updatedAt: Date.now()
+          }
+        });
+      });
+      notifyDataChanged('champion');
       return true;
     } catch (error) {
       console.error('Failed to save champion', error);
-      alert('王者画像の保存に失敗しました。画像サイズが大きすぎる可能性があります。');
+      alert('王者画像の保存に失敗しました。');
       return false;
     }
+  }
+
+  async function clearChampion() {
+    await withStore(SETTINGS_STORE, 'readwrite', (store) => {
+      store.delete(CHAMPION_SETTING_KEY);
+    });
+    notifyDataChanged('champion');
   }
 
   function createId() {
@@ -197,18 +315,17 @@ document.addEventListener('DOMContentLoaded', () => {
     championPreviewNameText.textContent = champion.name;
   }
 
-  function fillChampionForm(data) {
-    const champion = loadChampion();
-    const merged = data ? { ...champion, ...data } : champion;
-    championName.value = merged.name || '';
-    championTitle.value = merged.title || '';
+  async function fillChampionForm(data) {
+    const champion = data || await loadChampion();
+    championName.value = champion.name || '';
+    championTitle.value = champion.title || '';
     championImage.value = '';
-    currentChampionImageData = merged.image || '';
-    renderChampionPreview(merged);
+    currentChampionImageData = champion.image || '';
+    renderChampionPreview(champion);
   }
 
-  function renderList() {
-    const participants = loadParticipants();
+  async function renderList() {
+    const participants = await loadParticipants();
 
     if (participants.length === 0) {
       playerList.innerHTML = '<div class="empty-state">まだ参加者が登録されていません。<br>左のフォームから名前と顔写真を登録してください。</div>';
@@ -235,11 +352,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function bindDeleteButtons() {
     playerList.querySelectorAll('[data-delete-id]').forEach((button) => {
-      button.addEventListener('click', () => {
+      button.addEventListener('click', async () => {
         const id = button.getAttribute('data-delete-id');
-        const next = loadParticipants().filter((player) => player.id !== id);
-        saveParticipants(next);
-        renderList();
+        await removeParticipant(id);
+        await renderList();
       });
     });
   }
@@ -247,7 +363,8 @@ document.addEventListener('DOMContentLoaded', () => {
   championImage.addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) {
-      currentChampionImageData = loadChampion().image || '';
+      const loaded = await loadChampion();
+      currentChampionImageData = loaded.image || '';
       renderChampionPreview({
         name: championName.value.trim() || DEFAULT_DEFENDING_CHAMPION.name,
         title: championTitle.value.trim() || DEFAULT_DEFENDING_CHAMPION.title,
@@ -305,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    const saved = saveChampion({
+    const saved = await saveChampion({
       id: DEFAULT_DEFENDING_CHAMPION.id,
       name,
       title,
@@ -315,14 +432,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (!saved) return;
-    fillChampionForm(loadChampion());
+    await fillChampionForm();
     alert('ディフェンディングチャンピオン設定を保存しました。');
   });
 
-  btnChampionResetForm.addEventListener('click', () => {
+  btnChampionResetForm.addEventListener('click', async () => {
     if (!confirm('ディフェンディングチャンピオン設定を初期値に戻します。よろしいですか？')) return;
-    localStorage.removeItem(DEFENDING_CHAMPION_KEY);
-    fillChampionForm(DEFAULT_DEFENDING_CHAMPION);
+    await clearChampion();
+    await fillChampionForm({ ...DEFAULT_DEFENDING_CHAMPION });
   });
 
   playerImage.addEventListener('change', async (event) => {
@@ -359,32 +476,27 @@ document.addEventListener('DOMContentLoaded', () => {
       currentImageData = await optimizeImageFile(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.82 });
     }
 
-    const next = [
-      ...loadParticipants(),
-      {
-        id: createId(),
-        name,
-        image: currentImageData,
-        createdAt: Date.now()
-      }
-    ];
+    const saved = await addParticipant({
+      id: createId(),
+      name,
+      image: currentImageData,
+      createdAt: Date.now()
+    });
 
-    const saved = saveParticipants(next);
     if (!saved) return;
-    renderList();
+    await renderList();
     resetForm();
   });
 
   btnResetForm.addEventListener('click', resetForm);
 
-  btnClearAll.addEventListener('click', () => {
+  btnClearAll.addEventListener('click', async () => {
     if (!confirm('登録済み参加者をすべて削除します。よろしいですか？')) return;
-    const saved = saveParticipants([]);
-    if (!saved) return;
-    renderList();
+    await clearParticipants();
+    await renderList();
   });
 
-  btnSeedDummy.addEventListener('click', () => {
+  btnSeedDummy.addEventListener('click', async () => {
     const samples = [
       ['TAKA', '#23d8ff', '#0f3f62'],
       ['YUJI', '#ff4f7d', '#5f1735'],
@@ -397,21 +509,56 @@ document.addEventListener('DOMContentLoaded', () => {
       createdAt: Date.now()
     }));
 
-    const saved = saveParticipants([...loadParticipants(), ...samples]);
+    const saved = await addParticipants(samples);
     if (!saved) return;
-    renderList();
+    await renderList();
   });
 
-  window.addEventListener('storage', (event) => {
-    if (event.key === STORAGE_KEY) {
-      renderList();
-    }
-    if (event.key === DEFENDING_CHAMPION_KEY) {
-      fillChampionForm(loadChampion());
+  window.addEventListener('storage', async (event) => {
+    if (event.key === SYNC_EVENT_KEY) {
+      await renderList();
+      await fillChampionForm();
     }
   });
 
-  renderList();
-  resetForm();
-  fillChampionForm(loadChampion());
+  syncChannel?.addEventListener('message', async () => {
+    await renderList();
+    await fillChampionForm();
+  });
+
+  async function migrateLegacyDataIfNeeded() {
+    try {
+      const dbParticipants = await loadParticipants();
+      if (dbParticipants.length === 0) {
+        const rawParticipants = localStorage.getItem(LEGACY_PARTICIPANT_KEY);
+        const parsedParticipants = rawParticipants ? JSON.parse(rawParticipants) : [];
+        if (Array.isArray(parsedParticipants) && parsedParticipants.length > 0) {
+          await addParticipants(parsedParticipants.filter((item) => item && item.id && item.name && item.image));
+        }
+      }
+
+      const currentChampion = await loadChampion();
+      const rawChampion = localStorage.getItem(LEGACY_CHAMPION_KEY);
+      const parsedChampion = rawChampion ? JSON.parse(rawChampion) : null;
+      const isDefaultChampion = (
+        currentChampion.name === DEFAULT_DEFENDING_CHAMPION.name &&
+        currentChampion.title === DEFAULT_DEFENDING_CHAMPION.title &&
+        !currentChampion.image
+      );
+      if (isDefaultChampion && parsedChampion && typeof parsedChampion === 'object') {
+        await saveChampion(parsedChampion);
+      }
+    } catch (error) {
+      console.warn('Legacy storage migration skipped', error);
+    }
+  }
+
+  async function init() {
+    await migrateLegacyDataIfNeeded();
+    await renderList();
+    resetForm();
+    await fillChampionForm();
+  }
+
+  init();
 });

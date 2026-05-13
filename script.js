@@ -2,6 +2,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const PARTICIPANT_KEY = "fightcard:participants";
   const TOURNAMENT_KEY = "fightcard:tournament";
   const DEFENDING_CHAMPION_KEY = "fightcard:defendingChampion";
+  const SYNC_EVENT_KEY = "fightcard:sync";
+  const DB_NAME = "fightcard-db";
+  const DB_VERSION = 1;
+  const PARTICIPANT_STORE = "participants";
+  const SETTINGS_STORE = "settings";
+  const syncChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("fightcard-sync") : null;
 
   const DEFAULT_DEFENDING_CHAMPION = {
     id: "defending-champion",
@@ -79,6 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
     rightTimer: null,
     isBusy: false,
     participants: [],
+    defendingChampion: null,
     tournament: null,
     scheduledMatch: null,
     particlesFrame: null,
@@ -86,19 +93,42 @@ document.addEventListener("DOMContentLoaded", () => {
     modalTimer: null
   };
 
-  function loadStoredDefendingChampion() {
+  function openDatabase() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(PARTICIPANT_STORE)) {
+          db.createObjectStore(PARTICIPANT_STORE, { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains(SETTINGS_STORE)) {
+          db.createObjectStore(SETTINGS_STORE, { keyPath: "key" });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function loadStoredDefendingChampion() {
     try {
-      const raw = localStorage.getItem(DEFENDING_CHAMPION_KEY);
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (!parsed || typeof parsed !== "object") return null;
-      return parsed;
+      const db = await openDatabase();
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(SETTINGS_STORE, "readonly");
+        const store = tx.objectStore(SETTINGS_STORE);
+        const request = store.get("defendingChampion");
+        request.onsuccess = () => resolve(request.result?.value || null);
+        request.onerror = () => reject(request.error);
+        tx.oncomplete = () => db.close();
+        tx.onabort = tx.onerror = () => db.close();
+      });
     } catch {
       return null;
     }
   }
 
-  function getDefendingChampion() {
-    const stored = loadStoredDefendingChampion();
+  async function refreshChampion() {
+    const stored = await loadStoredDefendingChampion();
     const champion = {
       ...DEFAULT_DEFENDING_CHAMPION,
       ...(stored || {}),
@@ -109,12 +139,74 @@ document.addEventListener("DOMContentLoaded", () => {
       colorB: typeof stored?.colorB === "string" ? stored.colorB : DEFAULT_DEFENDING_CHAMPION.colorB
     };
 
-    return {
+    state.defendingChampion = {
       ...champion,
       image: champion.image || createFighterSvgDataUrl(
         champion.name,
         champion.colorA,
         champion.colorB
+      )
+    };
+  }
+
+  async function migrateLegacyDataIfNeeded() {
+    try {
+      const db = await openDatabase();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction([PARTICIPANT_STORE, SETTINGS_STORE], "readwrite");
+        const participantStore = tx.objectStore(PARTICIPANT_STORE);
+        const settingsStore = tx.objectStore(SETTINGS_STORE);
+        const participantCountRequest = participantStore.count();
+        const championRequest = settingsStore.get("defendingChampion");
+
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => {
+          db.close();
+          reject(tx.error || new Error("Legacy migration failed"));
+        };
+        tx.onabort = tx.onerror;
+
+        participantCountRequest.onsuccess = () => {
+          if (participantCountRequest.result === 0) {
+            try {
+              const rawParticipants = localStorage.getItem(PARTICIPANT_KEY);
+              const parsedParticipants = rawParticipants ? JSON.parse(rawParticipants) : [];
+              if (Array.isArray(parsedParticipants)) {
+                parsedParticipants
+                  .filter((item) => item && item.id && item.name && item.image)
+                  .forEach((item) => participantStore.put(item));
+              }
+            } catch {}
+          }
+        };
+
+        championRequest.onsuccess = () => {
+          if (!championRequest.result?.value) {
+            try {
+              const rawChampion = localStorage.getItem(DEFENDING_CHAMPION_KEY);
+              const parsedChampion = rawChampion ? JSON.parse(rawChampion) : null;
+              if (parsedChampion && typeof parsedChampion === "object") {
+                settingsStore.put({ key: "defendingChampion", value: parsedChampion });
+              }
+            } catch {}
+          }
+        };
+      });
+    } catch (error) {
+      console.warn("Legacy storage migration skipped", error);
+    }
+  }
+
+  function getDefendingChampion() {
+    return state.defendingChampion || {
+      ...DEFAULT_DEFENDING_CHAMPION,
+      image: createFighterSvgDataUrl(
+        DEFAULT_DEFENDING_CHAMPION.name,
+        DEFAULT_DEFENDING_CHAMPION.colorA,
+        DEFAULT_DEFENDING_CHAMPION.colorB
       )
     };
   }
@@ -169,19 +261,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }));
   }
 
-  function loadStoredParticipants() {
+  async function loadStoredParticipants() {
     try {
-      const raw = localStorage.getItem(PARTICIPANT_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter((item) => item && item.id && item.name && item.image);
+      const db = await openDatabase();
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(PARTICIPANT_STORE, "readonly");
+        const store = tx.objectStore(PARTICIPANT_STORE);
+        const request = store.getAll();
+        request.onsuccess = () => {
+          const rows = Array.isArray(request.result) ? request.result : [];
+          rows.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+          resolve(rows.filter((item) => item && item.id && item.name && item.image));
+        };
+        request.onerror = () => reject(request.error);
+        tx.oncomplete = () => db.close();
+        tx.onabort = tx.onerror = () => db.close();
+      });
     } catch {
       return [];
     }
   }
 
-  function refreshParticipants() {
-    const stored = loadStoredParticipants();
+  async function refreshParticipants() {
+    const stored = await loadStoredParticipants();
     state.participants = stored.length >= 2 ? stored : getFallbackParticipants();
   }
 
@@ -461,8 +563,8 @@ document.addEventListener("DOMContentLoaded", () => {
     showMatchBanner("SPECIAL TITLE MATCH", "CHAMPION CHALLENGE", true);
   }
 
-  function renderScheduledOrFallbackPair() {
-    refreshParticipants();
+  async function renderScheduledOrFallbackPair() {
+    await refreshParticipants();
     refreshTournament();
 
     if (state.tournament?.status === "complete") {
@@ -696,8 +798,8 @@ document.addEventListener("DOMContentLoaded", () => {
     renderSide("right", next, rightBadge.textContent);
   }
 
-  function startShuffle() {
-    refreshParticipants();
+  async function startShuffle() {
+    await refreshParticipants();
     refreshTournament();
 
     if (state.isBusy) return;
@@ -743,7 +845,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function confirmShuffle() {
-    refreshParticipants();
+    await refreshParticipants();
     refreshTournament();
 
     if (state.isBusy || state.phase !== "shuffling") return;
@@ -791,8 +893,8 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  function renderTournamentBracket() {
-    refreshParticipants();
+  async function renderTournamentBracket() {
+    await refreshParticipants();
     refreshTournament();
 
     if (!state.tournament) {
@@ -851,8 +953,8 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
-  function startTournament() {
-    refreshParticipants();
+  async function startTournament() {
+    await refreshParticipants();
     if (state.participants.length !== 13) {
       alert(`13人トーナメントは現在ちょうど13人で開始します。今は ${state.participants.length} 人です。`);
       return;
@@ -861,24 +963,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const tournament = buildTournament13(state.participants);
     saveTournament(tournament);
     refreshTournament();
-    renderScheduledOrFallbackPair();
+    await renderScheduledOrFallbackPair();
     renderHudLabels();
-    renderTournamentBracket();
+    await renderTournamentBracket();
     setPhase("idle");
   }
 
-  function resetTournament() {
+  async function resetTournament() {
     if (!confirm("トーナメント表と進行状況をリセットします。よろしいですか？")) return;
     saveTournament(null);
     refreshTournament();
-    renderScheduledOrFallbackPair();
+    await renderScheduledOrFallbackPair();
     renderHudLabels();
-    renderTournamentBracket();
+    await renderTournamentBracket();
     setPhase("idle");
   }
 
-  function openTournamentDialog() {
-    renderTournamentBracket();
+  async function openTournamentDialog() {
+    await renderTournamentBracket();
     clearTimeout(state.modalTimer);
     tournamentModal.hidden = false;
     requestAnimationFrame(() => {
@@ -894,7 +996,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 220);
   }
 
-  function selectWinner(side) {
+  async function selectWinner(side) {
     refreshTournament();
     if (!state.tournament || !state.scheduledMatch || state.phase !== "confirmed") return;
 
@@ -909,32 +1011,32 @@ document.addEventListener("DOMContentLoaded", () => {
       state.tournament.status = "complete";
       saveTournament(state.tournament);
       refreshTournament();
-      renderScheduledOrFallbackPair();
+      await renderScheduledOrFallbackPair();
       updateUiByPhase();
       triggerConfirmFx("TOURNAMENT RESULT", `${winner.name} WINS`);
       showChampionScreen(winner);
-      renderTournamentBracket();
+      await renderTournamentBracket();
       return;
     }
 
     saveTournament(state.tournament);
-    renderTournamentBracket();
+    await renderTournamentBracket();
     triggerConfirmFx("WINNER LOCKED IN", `${winner.name} ADVANCES`);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       refreshTournament();
-      renderScheduledOrFallbackPair();
+      await renderScheduledOrFallbackPair();
       setPhase("idle");
       if (isTournamentOpen()) {
-        renderTournamentBracket();
+        await renderTournamentBracket();
       }
     }, 900);
   }
 
-  function resetBattle() {
+  async function resetBattle() {
     if (state.phase === "locking" || state.isBusy) return;
     clearTimers();
-    renderScheduledOrFallbackPair();
+    await renderScheduledOrFallbackPair();
     if (state.tournament?.status === "complete") {
       updateUiByPhase();
       return;
@@ -942,17 +1044,19 @@ document.addEventListener("DOMContentLoaded", () => {
     setPhase("idle");
   }
 
-  function startNewTournamentFlow() {
+  async function startNewTournamentFlow() {
     hideChampionScreen();
     hideChallengeScreen();
-    resetTournament();
+    await resetTournament();
     closeTournamentDialog();
   }
 
-  function init() {
-    refreshParticipants();
+  async function init() {
+    await migrateLegacyDataIfNeeded();
+    await refreshParticipants();
+    await refreshChampion();
     refreshTournament();
-    renderScheduledOrFallbackPair();
+    await renderScheduledOrFallbackPair();
     renderHudLabels();
     setPhase("idle");
     resizeParticlesCanvas();
@@ -966,7 +1070,8 @@ document.addEventListener("DOMContentLoaded", () => {
     btnWinnerLeft.addEventListener("click", () => selectWinner("left"));
     btnWinnerRight.addEventListener("click", () => selectWinner("right"));
     btnChampionClose.addEventListener("click", hideChampionScreen);
-    btnChampionChallenge.addEventListener("click", () => {
+    btnChampionChallenge.addEventListener("click", async () => {
+      await refreshChampion();
       const champion = getChampion(state.tournament);
       if (champion) showChallengeScreen(champion);
     });
@@ -976,19 +1081,45 @@ document.addEventListener("DOMContentLoaded", () => {
     tournamentBackdrop.addEventListener("click", closeTournamentDialog);
 
     window.addEventListener("resize", resizeParticlesCanvas);
-    window.addEventListener("storage", (event) => {
-      if (event.key === PARTICIPANT_KEY || event.key === TOURNAMENT_KEY) {
-        refreshParticipants();
+    window.addEventListener("storage", async (event) => {
+      if (event.key === TOURNAMENT_KEY) {
         refreshTournament();
-        renderScheduledOrFallbackPair();
+        await renderScheduledOrFallbackPair();
         updateUiByPhase();
         if (isTournamentOpen()) {
-          renderTournamentBracket();
+          await renderTournamentBracket();
         }
         return;
       }
 
-      if (event.key === DEFENDING_CHAMPION_KEY && !challengeScreen.hidden) {
+      if (event.key === SYNC_EVENT_KEY) {
+        await refreshParticipants();
+        await refreshChampion();
+        refreshTournament();
+        await renderScheduledOrFallbackPair();
+        updateUiByPhase();
+        if (isTournamentOpen()) {
+          await renderTournamentBracket();
+        }
+        if (!challengeScreen.hidden) {
+          const champion = getChampion(state.tournament);
+          if (champion) {
+            showChallengeScreen(champion);
+          }
+        }
+      }
+    });
+
+    syncChannel?.addEventListener("message", async () => {
+      await refreshParticipants();
+      await refreshChampion();
+      refreshTournament();
+      await renderScheduledOrFallbackPair();
+      updateUiByPhase();
+      if (isTournamentOpen()) {
+        await renderTournamentBracket();
+      }
+      if (!challengeScreen.hidden) {
         const champion = getChampion(state.tournament);
         if (champion) {
           showChallengeScreen(champion);
