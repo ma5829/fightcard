@@ -947,8 +947,8 @@ document.addEventListener("DOMContentLoaded", () => {
     renderMysteryPair({ leftBadge: state.tournament ? "RANDOM DRAW" : "UNKNOWN", rightBadge: state.tournament ? "RANDOM DRAW" : "UNKNOWN" });
 
     setPhase("shuffling");
-    state.leftTimer = setInterval(tickLeft, 68);
-    state.rightTimer = setInterval(tickRight, 92);
+    state.leftTimer = setInterval(tickLeft, 34);
+    state.rightTimer = setInterval(tickRight, 61);
   }
 
   async function stopWithSlowdown(side, finalFighter, finalBadge, delays) {
@@ -992,8 +992,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     await Promise.all([
-      stopWithSlowdown("left", finalPair.left, finalPair.leftBadge, [70, 100, 140, 190, 260, 340]),
-      stopWithSlowdown("right", finalPair.right, finalPair.rightBadge, [85, 120, 160, 220, 290, 380])
+      stopWithSlowdown("left", finalPair.left, finalPair.leftBadge, [36, 54, 74, 108, 160, 240]),
+      stopWithSlowdown("right", finalPair.right, finalPair.rightBadge, [58, 82, 112, 156, 220, 320])
     ]);
 
     state.revealScheduledMatch = !!state.tournament;

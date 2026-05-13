@@ -319,12 +319,12 @@ kbd {
   position: relative;
   z-index: 3;
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) auto minmax(360px, 1fr);
+  grid-template-columns: minmax(400px, 1fr) auto minmax(400px, 1fr);
   align-items: center;
   justify-content: center;
-  gap: clamp(16px, 2vw, 32px);
-  padding: 8px 34px 0;
-  min-height: 680px;
+  gap: clamp(14px, 1.6vw, 26px);
+  padding: 2px 26px 0;
+  min-height: 740px;
 }
 
 .fighter-panel {
@@ -339,14 +339,16 @@ kbd {
 
 .fighter-frame {
   position: relative;
-  width: min(100%, 500px);
+  width: min(100%, 560px);
   aspect-ratio: 4 / 5;
   height: auto;
-  padding: 12px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.02));
-  clip-path: polygon(22px 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.02)),
+    linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
+  clip-path: polygon(24px 0, 100% 0, calc(100% - 24px) 100%, 0 100%);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
   transition: transform 0.28s ease, box-shadow 0.28s ease, filter 0.28s ease;
 }
 
@@ -366,6 +368,15 @@ kbd {
   clip-path: polygon(18px 0, 100% 0, calc(100% - 18px) 100%, 0 100%);
   border: 1px solid rgba(255,255,255,0.14);
   background: linear-gradient(180deg, #18202f 0%, #0a0e16 100%);
+}
+
+.fighter-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 14%, transparent 72%, rgba(0,0,0,0.26));
+  pointer-events: none;
 }
 
 .fighter-art--left {
@@ -395,7 +406,7 @@ kbd {
   height: 100%;
   object-fit: cover;
   object-position: center 18%;
-  transform: scale(1.04);
+  transform: scale(1.08);
 }
 
 .fighter-art__badge,
@@ -424,47 +435,89 @@ kbd {
 .nameplate {
   position: relative;
   z-index: 4;
-  width: min(92%, 430px);
+  width: min(94%, 470px);
   display: grid;
   justify-items: center;
-  gap: 8px;
-  min-height: 102px;
-  margin-top: -38px;
-  padding: 18px 22px 20px;
+  gap: 10px;
+  min-height: 118px;
+  margin-top: -44px;
+  padding: 16px 24px 24px;
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04)),
-    linear-gradient(135deg, rgba(8,10,16,0.92), rgba(16,18,28,0.72));
-  border: 1px solid rgba(255,255,255,0.16);
-  clip-path: polygon(20px 0, 100% 0, calc(100% - 20px) 100%, 0 100%);
-  backdrop-filter: blur(16px);
-  transition: transform 0.28s ease, opacity 0.28s ease;
+    linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.03)),
+    linear-gradient(135deg, rgba(15,18,28,0.96), rgba(10,12,20,0.82));
+  border: 1px solid rgba(255,255,255,0.18);
+  clip-path: polygon(22px 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
+  backdrop-filter: blur(18px);
+  transition: transform 0.28s ease, opacity 0.28s ease, box-shadow 0.28s ease;
   text-align: center;
+  overflow: hidden;
 }
 
-.nameplate--left { box-shadow: 0 0 26px rgba(45,215,255,.22), 0 16px 40px rgba(0,0,0,.36); }
-.nameplate--right { box-shadow: 0 0 26px rgba(255,61,104,.22), 0 16px 40px rgba(0,0,0,.36); }
+.nameplate::before,
+.nameplate::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.nameplate::before {
+  top: 10px;
+  background: linear-gradient(90deg, transparent, rgba(255,228,91,0.85), transparent);
+}
+
+.nameplate::after {
+  bottom: 10px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+}
+
+.nameplate--left {
+  box-shadow:
+    0 0 0 1px rgba(255,228,91,.10),
+    0 0 26px rgba(45,215,255,.18),
+    0 18px 48px rgba(0,0,0,.42);
+}
+
+.nameplate--right {
+  box-shadow:
+    0 0 0 1px rgba(255,228,91,.10),
+    0 0 26px rgba(255,61,104,.18),
+    0 18px 48px rgba(0,0,0,.42);
+}
 
 .nameplate__label {
+  position: relative;
+  z-index: 1;
+  padding: 0 12px;
   font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 0.26em;
+  color: #e4c979;
+  letter-spacing: 0.34em;
   text-transform: uppercase;
 }
 
 .nameplate__name {
+  position: relative;
+  z-index: 1;
   font-family: var(--font-name);
-  font-size: clamp(42px, 5.4vw, 74px);
+  font-size: clamp(46px, 5.8vw, 84px);
   font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 0.88;
+  letter-spacing: 0.09em;
+  line-height: 0.84;
   text-transform: uppercase;
+  background: linear-gradient(180deg, #fff8dc 0%, #f6df97 40%, #e3b654 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 2px 0 rgba(88,60,12,0.34), 0 10px 24px rgba(0,0,0,0.30);
 }
 
 .vs-core {
   position: relative;
   display: grid;
   place-items: center;
-  width: clamp(190px, 16vw, 300px);
+  width: clamp(170px, 14vw, 250px);
   aspect-ratio: 1 / 1;
   margin-inline: auto;
   transition: transform 0.28s ease;
@@ -1550,7 +1603,7 @@ kbd {
 .is-confirmed .fighter-art__img { transform: scale(1.06); filter: saturate(1.14) contrast(1.08); }
 .is-confirmed .fighter-panel--left .fighter-frame { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 0 34px rgba(45,215,255,.95), 0 0 90px rgba(45,215,255,.34); }
 .is-confirmed .fighter-panel--right .fighter-frame { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 0 34px rgba(255,61,104,.95), 0 0 90px rgba(255,61,104,.34); }
-.is-confirmed .nameplate { animation: plateEnter 0.56s cubic-bezier(.2,.8,.2,1) both; box-shadow: 0 0 22px rgba(255,228,91,.26); }
+.is-confirmed .nameplate { animation: plateEnter 0.56s cubic-bezier(.2,.8,.2,1) both; box-shadow: 0 0 0 1px rgba(255,228,91,.12), 0 0 30px rgba(255,228,91,.18), 0 18px 44px rgba(0,0,0,.42); }
 .is-confirmed .battle-status__value { color: #fff7c2; text-shadow: 0 0 12px rgba(255,228,91,0.4), 0 0 30px rgba(255,228,91,.18); }
 
 /* Keyframes */
@@ -1597,7 +1650,7 @@ kbd {
 @media (max-width: 720px) {
   body { padding: 10px; }
   .display-shell { width: min(98vw, 1880px); }
-  .battle-screen { min-height: 980px; border-radius: 18px; }
+  .battle-screen { min-height: 1020px; border-radius: 18px; }
   .battle-hud { flex-direction: column; align-items: flex-start; padding: 22px 18px 0; }
   .battle-stage { padding: 10px 16px 0; }
   .battle-footer { padding: 0 16px 18px; }
