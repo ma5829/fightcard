@@ -330,7 +330,7 @@ kbd {
 .fighter-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
   align-items: center;
 }
 
@@ -440,7 +440,7 @@ kbd {
   justify-items: center;
   gap: 8px;
   min-height: 100px;
-  margin-top: 2px;
+  margin-top: 10px;
   padding: 12px 22px 18px;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.03)),
@@ -1600,11 +1600,11 @@ kbd {
   opacity: 0.78;
   transform: rotate(-8deg);
 }
-.is-confirmed .fighter-frame { transform: scale(1.065); }
+.is-confirmed .fighter-frame { transform: scale(1.04); }
 .is-confirmed .fighter-art__img { transform: scale(1.06); filter: saturate(1.14) contrast(1.08); }
 .is-confirmed .fighter-panel--left .fighter-frame { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 0 34px rgba(45,215,255,.95), 0 0 90px rgba(45,215,255,.34); }
 .is-confirmed .fighter-panel--right .fighter-frame { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 0 34px rgba(255,61,104,.95), 0 0 90px rgba(255,61,104,.34); }
-.is-confirmed .nameplate { animation: plateEnter 0.56s cubic-bezier(.2,.8,.2,1) both; box-shadow: 0 0 0 1px rgba(255,228,91,.12), 0 0 30px rgba(255,228,91,.18), 0 18px 44px rgba(0,0,0,.42); }
+.is-confirmed .nameplate { animation: plateEnter 0.56s cubic-bezier(.2,.8,.2,1) both; transform: translateY(4px); box-shadow: 0 0 0 1px rgba(255,228,91,.12), 0 0 30px rgba(255,228,91,.18), 0 18px 44px rgba(0,0,0,.42); }
 .is-confirmed .battle-status__value { color: #fff7c2; text-shadow: 0 0 12px rgba(255,228,91,0.4), 0 0 30px rgba(255,228,91,.18); }
 
 /* Keyframes */

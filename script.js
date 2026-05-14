@@ -87,6 +87,27 @@ document.addEventListener("DOMContentLoaded", () => {
   const canvas = document.getElementById("fxParticles");
   const ctx = canvas?.getContext("2d");
 
+  const AUDIO_ASSETS = {
+    rouletteBgm: "./assets/audio/roulette_bgm_fighting_game_loop.wav",
+    confirmSe: "./assets/audio/confirmed_se_flashy_rich.wav"
+  };
+
+  const audio = {
+    rouletteBgm: typeof Audio !== "undefined" ? new Audio(AUDIO_ASSETS.rouletteBgm) : null,
+    confirmSe: typeof Audio !== "undefined" ? new Audio(AUDIO_ASSETS.confirmSe) : null
+  };
+
+  if (audio.rouletteBgm) {
+    audio.rouletteBgm.loop = true;
+    audio.rouletteBgm.preload = "auto";
+    audio.rouletteBgm.volume = 0.34;
+  }
+
+  if (audio.confirmSe) {
+    audio.confirmSe.preload = "auto";
+    audio.confirmSe.volume = 0.92;
+  }
+
   const state = {
     phase: "idle",
     leftCurrent: null,
@@ -227,6 +248,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function resetAudioPlayback(media) {
+    if (!media) return;
+    try {
+      media.pause();
+    } catch {}
+    try {
+      media.currentTime = 0;
+    } catch {}
+  }
+
+  async function safePlayAudio(media, { restart = false } = {}) {
+    if (!media) return;
+    try {
+      if (restart) {
+        resetAudioPlayback(media);
+      }
+      await media.play();
+    } catch {}
+  }
+
+  function playRouletteBgm() {
+    void safePlayAudio(audio.rouletteBgm, { restart: true });
+  }
+
+  function stopRouletteBgm(reset = true) {
+    if (!audio.rouletteBgm) return;
+    try {
+      audio.rouletteBgm.pause();
+    } catch {}
+    if (reset) {
+      try {
+        audio.rouletteBgm.currentTime = 0;
+      } catch {}
+    }
+  }
+
+  function playConfirmSe() {
+    void safePlayAudio(audio.confirmSe, { restart: true });
+  }
+
+  function stopAllAudio() {
+    stopRouletteBgm(true);
+    resetAudioPlayback(audio.confirmSe);
   }
 
   function escapeHtml(str) {
@@ -819,6 +885,9 @@ document.addEventListener("DOMContentLoaded", () => {
       hideMatchBanner();
       void hideWinnerSpotlight(false);
     }
+    if (phase !== "shuffling" && phase !== "locking") {
+      stopRouletteBgm(true);
+    }
     updateUiByPhase();
   }
 
@@ -907,6 +976,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function triggerConfirmFx(eyebrow, text) {
+    stopRouletteBgm(true);
+    playConfirmSe();
     battleScreen.classList.remove("is-confirmed");
     void battleScreen.offsetWidth;
     battleScreen.classList.add("is-confirmed");
@@ -947,6 +1018,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderMysteryPair({ leftBadge: state.tournament ? "RANDOM DRAW" : "UNKNOWN", rightBadge: state.tournament ? "RANDOM DRAW" : "UNKNOWN" });
 
     setPhase("shuffling");
+    playRouletteBgm();
     state.leftTimer = setInterval(tickLeft, 34);
     state.rightTimer = setInterval(tickRight, 61);
   }
@@ -1287,6 +1359,12 @@ document.addEventListener("DOMContentLoaded", () => {
     tournamentBackdrop.addEventListener("click", closeTournamentDialog);
 
     window.addEventListener("resize", resizeParticlesCanvas);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        stopAllAudio();
+      }
+    });
+    window.addEventListener("beforeunload", stopAllAudio);
     window.addEventListener("storage", async (event) => {
       if (event.key === TOURNAMENT_KEY) {
         refreshTournament();
