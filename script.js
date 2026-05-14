@@ -105,7 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (audio.confirmSe) {
     audio.confirmSe.preload = "auto";
-    audio.confirmSe.volume = 0.92;
+    audio.confirmSe.volume = 1;
   }
 
   const state = {
